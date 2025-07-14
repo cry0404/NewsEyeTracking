@@ -6,7 +6,7 @@ import (
 	"context"
 )
 
-// AuthService 认证服务接口
+// AuthService 认证服务接口， 服务由接口构成
 type AuthService interface {
 	// ValidateInviteCode 验证邀请码
 	ValidateInviteCode(ctx context.Context, code string) (*models.InviteCode, error)

@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// 加载环境变量
+	
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("项目环境变量未成功加载，将使用系统环境变量")

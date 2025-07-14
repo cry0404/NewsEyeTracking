@@ -8,32 +8,30 @@ import (
 	"log"
 	"os"
 
+
+
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 	"github.com/joho/godotenv"
 )
 
-var (
-	bucketName string
-	objectName string
-	region      string
-)
-
-
 func UploadCompressedData() {
-	region := "cn-shenzhen"
-	bucketName := "newseyetrackingtest"
-	objectName := "https://oss-cn-shenzhen.aliyuncs.com"
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("未找到 .env 文件，加载失败")
 	}
-	//region := "cn-shenzhen"
+
 	accessKeyId := os.Getenv("ACCESS_ID")
 	accessKeySecret := os.Getenv("ACCESS_KEY")
 	if accessKeyId == "" || accessKeySecret == "" {
 		log.Println("请记得设置环境变量")
 	}
+	region := "cn-shenzhen"
+	bucketName := "newseyetrackingtest"
+	objectName := "https://oss-cn-shenzhen.aliyuncs.com"
+	
+	//region := "cn-shenzhen"
+	
 	provider := credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret)
 
 	cfg := oss.LoadDefaultConfig().WithCredentialsProvider(provider).WithRegion(region)
@@ -68,7 +66,7 @@ func UploadCompressedData() {
 	} else {
 		fmt.Println(string(jsonResult))
 	}
-
+/*
 	//测试下载
 	downloadFile := "./downloaded.txt"
 	getRequest := &oss.GetObjectRequest{
@@ -80,4 +78,5 @@ func UploadCompressedData() {
 		log.Fatalf("failed to get object to file: %v", err)
 	}
 	log.Printf("object downloaded to: %s", downloadFile)
+	*/
 }

@@ -67,11 +67,3 @@ type DataProcessor interface {
 	GetStats(compressedData string) (*CompressedDataStats, error)
 }
 
-// OSSUploadInfo OSS上传信息
-type OSSUploadInfo struct {
-	Bucket   string `json:"bucket"`
-	Key      string `json:"key"`      // 文件路径
-	URL      string `json:"url"`      // 访问URL
-	Size     int64  `json:"size"`     // 文件大小
-	Checksum string `json:"checksum"` // 文件校验和
-}

@@ -15,7 +15,7 @@ type InviteCode struct {
 	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 }
 
-// User 用户表模型
+// User 表这里应该需要绑定 bind ，然后就可以
 type User struct {
 	ID             int        `json:"id" db:"id"`
 	Email          string     `json:"email" db:"email"`

@@ -28,7 +28,7 @@ func ErrorHandler() gin.HandlerFunc {
 
 		c.Next()
 
-		// 处理在处理程序中设置的错误
+		// 处理在处理程序中设置的错误，挨个按顺序做处理
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last()
 			log.Printf("[ERROR] %v", err.Error())

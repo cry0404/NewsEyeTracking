@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 )
 
 // MakeJWT 创建JWT令牌
@@ -63,7 +65,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	}
 
 	return userID, nil
-}
+} // jwt 返回的也是一个 uuid
 
 // JWTAuth JWT认证中间件
 func JWTAuth() gin.HandlerFunc {
@@ -94,8 +96,15 @@ func JWTAuth() gin.HandlerFunc {
 
 		tokenString := tokenParts[1]
 
-		// TODO: 从环境变量获取JWT密钥
-		jwtSecret := "your-secret-key" // 这里应该从配置文件或环境变量获取
+		err := godotenv.Load()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+				models.ErrorCodeInternalError,
+				"服务器环境变量加载错误",
+				err.Error(),
+			))
+		}
+		jwtSecret := os.Getenv("JWT_SECRET") // 这里应该从配置文件或环境变量获取
 
 		// 验证token
 		userID, err := ValidateJWT(tokenString, jwtSecret)
@@ -110,7 +119,7 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		// 将用户ID存储到上下文中
-		c.Set("userID", userID.String())
+		c.Set("userID", userID.String()) //方便根据需要提取，因为后面的验证需要
 		c.Next()
 	}
 }
