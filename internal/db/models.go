@@ -32,23 +32,23 @@ type FeedItem struct {
 	Link        string         `json:"link"`
 	Guid        string         `json:"guid"`
 	Author      sql.NullString `json:"author"`
+	Keywords    []string       `json:"keywords"`
 	PublishedAt sql.NullTime   `json:"published_at"`
 	CreatedAt   sql.NullTime   `json:"created_at"`
 }
 
 type InviteCode struct {
-	ID                 int32         `json:"id"`
-	Code               string        `json:"code"`
-	IsUsed             sql.NullBool  `json:"is_used"`
-	UsedByUserID       sql.NullInt32 `json:"used_by_user_id"`
-	HasRecommend       sql.NullBool  `json:"has_recommend"`
-	HasMoreInformation sql.NullBool  `json:"has_more_information"`
-	CreatedAt          sql.NullTime  `json:"created_at"`
+	ID                 uuid.UUID    `json:"id"`
+	Code               string       `json:"code"`
+	IsUsed             sql.NullBool `json:"is_used"`
+	HasRecommend       sql.NullBool `json:"has_recommend"`
+	HasMoreInformation sql.NullBool `json:"has_more_information"`
+	CreatedAt          sql.NullTime `json:"created_at"`
 }
 
 type ReadingSession struct {
 	ID                uuid.UUID             `json:"id"`
-	UserID            int32                 `json:"user_id"`
+	UserID            uuid.UUID             `json:"user_id"`
 	ArticleID         int32                 `json:"article_id"`
 	StartTime         sql.NullTime          `json:"start_time"`
 	EndTime           sql.NullTime          `json:"end_time"`
@@ -60,7 +60,7 @@ type ReadingSession struct {
 }
 
 type User struct {
-	ID                  int32          `json:"id"`
+	ID                  uuid.UUID      `json:"id"`
 	Email               string         `json:"email"`
 	Gender              sql.NullString `json:"gender"`
 	Age                 sql.NullInt32  `json:"age"`
@@ -73,6 +73,15 @@ type User struct {
 	IsColorblind        sql.NullBool   `json:"is_colorblind"`
 	VisionStatus        sql.NullString `json:"vision_status"`
 	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
-	InviteCodeID        int32          `json:"invite_code_id"`
 	CreatedAt           sql.NullTime   `json:"created_at"`
+}
+
+type UserClickEvent struct {
+	ID        int32          `json:"id"`
+	UserID    uuid.UUID      `json:"user_id"`
+	ArticleID int32          `json:"article_id"`
+	SessionID uuid.NullUUID  `json:"session_id"`
+	ClickedAt sql.NullTime   `json:"clicked_at"`
+	IpAddress pqtype.Inet    `json:"ip_address"`
+	UserAgent sql.NullString `json:"user_agent"`
 }

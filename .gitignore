@@ -2,3 +2,4 @@
 *.pdf
 *.md
 docs/
+models/example.go

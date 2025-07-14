@@ -37,8 +37,8 @@ func SuccessResponse(data interface{}) *APIResponse {
 		Data:   data,
 	}
 }
-
-// ErrorResponse 创建错误响应
+// api response 在这里可以理解为父亲，error 和 success 都是继承的内容了
+// ErrorResponse 创建错误响应，设计的函数，使用 errorinfo 来获取
 func ErrorResponse(code, message, details string) *APIResponse {
 	return &APIResponse{
 		Status: "error",
@@ -49,6 +49,7 @@ func ErrorResponse(code, message, details string) *APIResponse {
 		},
 	}
 }
+
 /*
 // PaginationInfo 分页信息
 type PaginationInfo struct {

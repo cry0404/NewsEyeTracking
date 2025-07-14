@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"github.com/lib/pq"
 )
 
 const getArticleByID = `-- name: GetArticleByID :one
@@ -45,7 +47,7 @@ func (q *Queries) GetArticleByID(ctx context.Context, id int32) (GetArticleByIDR
 }
 
 const getNewArticles = `-- name: GetNewArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, published_at, created_at FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
 WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2
@@ -75,6 +77,7 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 			&i.Link,
 			&i.Guid,
 			&i.Author,
+			pq.Array(&i.Keywords),
 			&i.PublishedAt,
 			&i.CreatedAt,
 		); err != nil {

@@ -8,19 +8,22 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    email, gender, age, date_of_birth, education_level, residence,
+    id, email, gender, age, date_of_birth, education_level, residence,
     weekly_reading_hours, primary_news_platform, is_active_searcher,
-    is_colorblind, vision_status, is_vision_corrected, invite_code_id
+    is_colorblind, vision_status, is_vision_corrected
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
-) RETURNING id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, invite_code_id, created_at
+) RETURNING id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, created_at
 `
 
 type CreateUserParams struct {
+	ID                  uuid.UUID      `json:"id"`
 	Email               string         `json:"email"`
 	Gender              sql.NullString `json:"gender"`
 	Age                 sql.NullInt32  `json:"age"`
@@ -33,11 +36,13 @@ type CreateUserParams struct {
 	IsColorblind        sql.NullBool   `json:"is_colorblind"`
 	VisionStatus        sql.NullString `json:"vision_status"`
 	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
-	InviteCodeID        int32          `json:"invite_code_id"`
 }
 
+// 用户 CRUD 操作
+// 用户 ID 来自邀请码 ID，建立一对一关系
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
+		arg.ID,
 		arg.Email,
 		arg.Gender,
 		arg.Age,
@@ -50,7 +55,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.IsColorblind,
 		arg.VisionStatus,
 		arg.IsVisionCorrected,
-		arg.InviteCodeID,
 	)
 	var i User
 	err := row.Scan(
@@ -67,41 +71,90 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsColorblind,
 		&i.VisionStatus,
 		&i.IsVisionCorrected,
-		&i.InviteCodeID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
-const getUserABtestInformation = `-- name: GetUserABtestInformation :one
+const getUserABTestConfig = `-- name: GetUserABTestConfig :one
 SELECT has_recommend, has_more_information 
 FROM invite_codes WHERE id = $1
 `
 
-type GetUserABtestInformationRow struct {
+type GetUserABTestConfigRow struct {
 	HasRecommend       sql.NullBool `json:"has_recommend"`
 	HasMoreInformation sql.NullBool `json:"has_more_information"`
 }
 
-// 根据邀请码关联用户来查询对应的 recommend 和 information 状态
-func (q *Queries) GetUserABtestInformation(ctx context.Context, id int32) (GetUserABtestInformationRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserABtestInformation, id)
-	var i GetUserABtestInformationRow
+func (q *Queries) GetUserABTestConfig(ctx context.Context, id uuid.UUID) (GetUserABTestConfigRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserABTestConfig, id)
+	var i GetUserABTestConfigRow
 	err := row.Scan(&i.HasRecommend, &i.HasMoreInformation)
 	return i, err
 }
 
-const updateUser = `-- name: UpdateUser :one
-
-UPDATE users SET
-    gender = $2, age = $3, date_of_birth = $4, education_level = $5, residence = $6,
-    weekly_reading_hours = $7, primary_news_platform = $8, is_active_searcher = $9,
-    is_colorblind = $10, vision_status = $11, is_vision_corrected = $12, invite_code_id = $13
-WHERE id = $1 RETURNING id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, invite_code_id, created_at
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, created_at FROM users WHERE email = $1
 `
 
-type UpdateUserParams struct {
-	ID                  int32          `json:"id"`
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Gender,
+		&i.Age,
+		&i.DateOfBirth,
+		&i.EducationLevel,
+		&i.Residence,
+		&i.WeeklyReadingHours,
+		&i.PrimaryNewsPlatform,
+		&i.IsActiveSearcher,
+		&i.IsColorblind,
+		&i.VisionStatus,
+		&i.IsVisionCorrected,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, created_at FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Gender,
+		&i.Age,
+		&i.DateOfBirth,
+		&i.EducationLevel,
+		&i.Residence,
+		&i.WeeklyReadingHours,
+		&i.PrimaryNewsPlatform,
+		&i.IsActiveSearcher,
+		&i.IsColorblind,
+		&i.VisionStatus,
+		&i.IsVisionCorrected,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserWithInviteCode = `-- name: GetUserWithInviteCode :one
+SELECT u.id, u.email, u.gender, u.age, u.date_of_birth, u.education_level, u.residence, u.weekly_reading_hours, u.primary_news_platform, u.is_active_searcher, u.is_colorblind, u.vision_status, u.is_vision_corrected, u.created_at, ic.has_recommend, ic.has_more_information 
+FROM users u 
+JOIN invite_codes ic ON u.id = ic.id 
+WHERE u.id = $1
+`
+
+type GetUserWithInviteCodeRow struct {
+	ID                  uuid.UUID      `json:"id"`
+	Email               string         `json:"email"`
 	Gender              sql.NullString `json:"gender"`
 	Age                 sql.NullInt32  `json:"age"`
 	DateOfBirth         sql.NullTime   `json:"date_of_birth"`
@@ -113,11 +166,59 @@ type UpdateUserParams struct {
 	IsColorblind        sql.NullBool   `json:"is_colorblind"`
 	VisionStatus        sql.NullString `json:"vision_status"`
 	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
-	InviteCodeID        int32          `json:"invite_code_id"`
+	CreatedAt           sql.NullTime   `json:"created_at"`
+	HasRecommend        sql.NullBool   `json:"has_recommend"`
+	HasMoreInformation  sql.NullBool   `json:"has_more_information"`
 }
 
-// 这里对应的应该是注册时的
-// 通过传入的第一个参数来更新返回对应的 user 信息
+// A/B 测试相关查询
+func (q *Queries) GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserWithInviteCode, id)
+	var i GetUserWithInviteCodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Gender,
+		&i.Age,
+		&i.DateOfBirth,
+		&i.EducationLevel,
+		&i.Residence,
+		&i.WeeklyReadingHours,
+		&i.PrimaryNewsPlatform,
+		&i.IsActiveSearcher,
+		&i.IsColorblind,
+		&i.VisionStatus,
+		&i.IsVisionCorrected,
+		&i.CreatedAt,
+		&i.HasRecommend,
+		&i.HasMoreInformation,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users SET
+    gender = $2, age = $3, date_of_birth = $4, education_level = $5, residence = $6,
+    weekly_reading_hours = $7, primary_news_platform = $8, is_active_searcher = $9,
+    is_colorblind = $10, vision_status = $11, is_vision_corrected = $12
+WHERE id = $1 RETURNING id, email, gender, age, date_of_birth, education_level, residence, weekly_reading_hours, primary_news_platform, is_active_searcher, is_colorblind, vision_status, is_vision_corrected, created_at
+`
+
+type UpdateUserParams struct {
+	ID                  uuid.UUID      `json:"id"`
+	Gender              sql.NullString `json:"gender"`
+	Age                 sql.NullInt32  `json:"age"`
+	DateOfBirth         sql.NullTime   `json:"date_of_birth"`
+	EducationLevel      sql.NullString `json:"education_level"`
+	Residence           sql.NullString `json:"residence"`
+	WeeklyReadingHours  sql.NullInt32  `json:"weekly_reading_hours"`
+	PrimaryNewsPlatform sql.NullString `json:"primary_news_platform"`
+	IsActiveSearcher    sql.NullBool   `json:"is_active_searcher"`
+	IsColorblind        sql.NullBool   `json:"is_colorblind"`
+	VisionStatus        sql.NullString `json:"vision_status"`
+	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
+}
+
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUser,
 		arg.ID,
@@ -132,7 +233,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.IsColorblind,
 		arg.VisionStatus,
 		arg.IsVisionCorrected,
-		arg.InviteCodeID,
 	)
 	var i User
 	err := row.Scan(
@@ -149,7 +249,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.IsColorblind,
 		&i.VisionStatus,
 		&i.IsVisionCorrected,
-		&i.InviteCodeID,
 		&i.CreatedAt,
 	)
 	return i, err

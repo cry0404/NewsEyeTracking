@@ -16,9 +16,9 @@ import (
 const createSession = `-- name: CreateSession :one
 
 INSERT INTO reading_sessions (
-    article_id, start_time, device_info, user_id
+    id, article_id, start_time, device_info, user_id
 )VALUES(
-    $1, $2, $3, $4
+    uuid_generate_v4(), $1, $2, $3, $4
 ) RETURNING id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms
 `
 
@@ -26,7 +26,7 @@ type CreateSessionParams struct {
 	ArticleID  int32                 `json:"article_id"`
 	StartTime  sql.NullTime          `json:"start_time"`
 	DeviceInfo pqtype.NullRawMessage `json:"device_info"`
-	UserID     int32                 `json:"user_id"`
+	UserID     uuid.UUID             `json:"user_id"`
 }
 
 // 创建一个新的会话，相当于打开了一篇新的网页，开启了新的事件
@@ -56,9 +56,118 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (R
 	return i, err
 }
 
+const getSessionByID = `-- name: GetSessionByID :one
+SELECT id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms FROM reading_sessions WHERE id = $1
+`
+
+// 会话查询
+func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSession, error) {
+	row := q.db.QueryRowContext(ctx, getSessionByID, id)
+	var i ReadingSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ArticleID,
+		&i.StartTime,
+		&i.EndTime,
+		&i.DeviceInfo,
+		&i.OssFilePath,
+		&i.DataSize,
+		&i.EventCount,
+		&i.SessionDurationMs,
+	)
+	return i, err
+}
+
+const getUserActiveSessions = `-- name: GetUserActiveSessions :many
+SELECT id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL
+`
+
+func (q *Queries) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error) {
+	rows, err := q.db.QueryContext(ctx, getUserActiveSessions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadingSession
+	for rows.Next() {
+		var i ReadingSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ArticleID,
+			&i.StartTime,
+			&i.EndTime,
+			&i.DeviceInfo,
+			&i.OssFilePath,
+			&i.DataSize,
+			&i.EventCount,
+			&i.SessionDurationMs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserSessionStats = `-- name: GetUserSessionStats :many
+SELECT 
+    article_id,
+    COUNT(*) as session_count,
+    AVG(session_duration_ms) as avg_duration_ms,
+    SUM(event_count) as total_events
+FROM reading_sessions 
+WHERE user_id = $1 AND end_time IS NOT NULL
+GROUP BY article_id
+`
+
+type GetUserSessionStatsRow struct {
+	ArticleID     int32   `json:"article_id"`
+	SessionCount  int64   `json:"session_count"`
+	AvgDurationMs float64 `json:"avg_duration_ms"`
+	TotalEvents   int64   `json:"total_events"`
+}
+
+// 会话统计查询
+func (q *Queries) GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserSessionStats, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserSessionStatsRow
+	for rows.Next() {
+		var i GetUserSessionStatsRow
+		if err := rows.Scan(
+			&i.ArticleID,
+			&i.SessionCount,
+			&i.AvgDurationMs,
+			&i.TotalEvents,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSessionEndTime = `-- name: UpdateSessionEndTime :one
 UPDATE reading_sessions SET
-    end_time = $2
+    end_time = $2,
+    session_duration_ms = EXTRACT(EPOCH FROM ($2 - start_time)) * 1000
 WHERE id = $1 RETURNING id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms
 `
 
@@ -67,7 +176,7 @@ type UpdateSessionEndTimeParams struct {
 	EndTime sql.NullTime `json:"end_time"`
 }
 
-// 更新会话的结束时间， 这里应该根据 sessionid 来更新,前端发送过来
+// 会话更新操作
 func (q *Queries) UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error) {
 	row := q.db.QueryRowContext(ctx, updateSessionEndTime, arg.ID, arg.EndTime)
 	var i ReadingSession
@@ -84,4 +193,29 @@ func (q *Queries) UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEnd
 		&i.SessionDurationMs,
 	)
 	return i, err
+}
+
+const updateSessionOSSPath = `-- name: UpdateSessionOSSPath :exec
+UPDATE reading_sessions SET
+    oss_file_path = $2,
+    data_size = $3,
+    event_count = $4
+WHERE id = $1
+`
+
+type UpdateSessionOSSPathParams struct {
+	ID          uuid.UUID      `json:"id"`
+	OssFilePath sql.NullString `json:"oss_file_path"`
+	DataSize    sql.NullInt64  `json:"data_size"`
+	EventCount  sql.NullInt32  `json:"event_count"`
+}
+
+func (q *Queries) UpdateSessionOSSPath(ctx context.Context, arg UpdateSessionOSSPathParams) error {
+	_, err := q.db.ExecContext(ctx, updateSessionOSSPath,
+		arg.ID,
+		arg.OssFilePath,
+		arg.DataSize,
+		arg.EventCount,
+	)
+	return err
 }

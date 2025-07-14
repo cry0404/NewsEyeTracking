@@ -6,6 +6,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
@@ -14,18 +16,35 @@ type Querier interface {
 	// 但是 endtime 应该是待定的，由前端发回来的信息， sessionid 作为打包区分，
 	// 一个 user_id 的内容
 	CreateSession(ctx context.Context, arg CreateSessionParams) (ReadingSession, error)
+	// 用户 CRUD 操作
+	// 用户 ID 来自邀请码 ID，建立一对一关系
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
+	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
+	// 获取邀请码ID（注册时使用）
+	GetIdByCode(ctx context.Context, code string) (uuid.UUID, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
-	// 根据邀请码关联用户来查询对应的 recommend 和 information 状态
-	GetUserABtestInformation(ctx context.Context, id int32) (GetUserABtestInformationRow, error)
-	// 更新会话的结束时间， 这里应该根据 sessionid 来更新,前端发送过来
+	// 会话查询
+	GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSession, error)
+	GetUserABTestConfig(ctx context.Context, id uuid.UUID) (GetUserABTestConfigRow, error)
+	GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// 会话统计查询
+	GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error)
+	// A/B 测试相关查询
+	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
+	// 标记邀请码为已使用
+	MarkInviteCodeAsUsed(ctx context.Context, code string) (InviteCode, error)
+	// 会话更新操作
 	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
-	// 这里对应的应该是注册时的
-	// 通过传入的第一个参数来更新返回对应的 user 信息
+	UpdateSessionOSSPath(ctx context.Context, arg UpdateSessionOSSPathParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// 验证邀请码（检查是否存在且未使用）
+	ValidateInviteCode(ctx context.Context, code string) (InviteCode, error)
 }
 
 var _ Querier = (*Queries)(nil)

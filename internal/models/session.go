@@ -18,7 +18,7 @@ type DeviceInfo struct {
 // ReadingSession 阅读会话模型
 type ReadingSession struct {
 	ID         uuid.UUID   `json:"id" db:"id"`
-	UserID     int         `json:"user_id" db:"user_id"`
+	UserID     uuid.UUID   `json:"user_id" db:"user_id"`
 	ArticleID  int         `json:"article_id" db:"article_id"`
 	StartTime  time.Time   `json:"start_time" db:"start_time"`
 	EndTime    *time.Time  `json:"end_time" db:"end_time"`
@@ -46,7 +46,7 @@ type CreateSessionRequest struct {
 // CreateSessionResponse 创建会话响应， 对应的 api
 type CreateSessionResponse struct {
 	SessionID uuid.UUID `json:"session_id"`
-	UserID    int       `json:"user_id"`
+	UserID    uuid.UUID `json:"user_id"`
 	ArticleID int       `json:"article_id"`
 	StartTime time.Time `json:"start_time"`
 }
