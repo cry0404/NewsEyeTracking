@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"NewsEyeTracking/internal/models"
+	"NewsEyeTracking/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,11 @@ func (h *Handlers) Register(c *gin.Context) {
 	}
 
 	// 调用服务层处理注册逻辑，这里注册并返回一个 jwt
-	user, err := h.services.User.CreateUser(c.Request.Context(), &req)
+	// 为认证操作创建带超时的 context
+	ctx, cancel := utils.WithAuthTimeout(c.Request.Context())
+	defer cancel()
+	
+	user, err := h.services.User.CreateUser(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -50,7 +55,11 @@ func (h *Handlers) GetProfile(c *gin.Context) {
 	}
 
 	// 调用服务层获取用户信息
-	user, err := h.services.User.GetUserByID(c.Request.Context(), userID.(string))
+	// 为数据库查询创建带超时的 context
+	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
+	defer cancel()
+	
+	user, err := h.services.User.GetUserByID(ctx, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -89,7 +98,11 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 	}
 
 	// 调用服务层更新用户信息
-	user, err := h.services.User.UpdateUser(c.Request.Context(), userID.(string), &req)
+	// 为写操作创建带超时的 context
+	ctx, cancel := utils.WithWriteTimeout(c.Request.Context())
+	defer cancel()
+	
+	user, err := h.services.User.UpdateUser(ctx, userID.(string), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,

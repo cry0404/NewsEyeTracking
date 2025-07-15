@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"NewsEyeTracking/internal/models"
+	"NewsEyeTracking/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,11 @@ func (h *Handlers) CreateSession(c *gin.Context) {
 	}
 
 	// 调用服务层创建会话
-	session, err := h.services.Session.CreateSession(c.Request.Context(), userID.(string), &req)
+	// 为写操作创建带超时的 context
+	ctx, cancel := utils.WithWriteTimeout(c.Request.Context())
+	defer cancel()
+	
+	session, err := h.services.Session.CreateSession(ctx, userID.(string), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -82,7 +87,11 @@ func (h *Handlers) EndSession(c *gin.Context) {
 	}
 
 	// 调用服务层结束会话
-	err := h.services.Session.EndSession(c.Request.Context(), sessionID, &req)
+	// 为写操作创建带超时的 context
+	ctx, cancel := utils.WithWriteTimeout(c.Request.Context())
+	defer cancel()
+	
+	err := h.services.Session.EndSession(ctx, sessionID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -132,7 +141,11 @@ func (h *Handlers) UploadCompressedData(c *gin.Context) {
 	}
 
 	// 调用服务层上传数据
-	response, err := h.services.Session.UploadCompressedData(c.Request.Context(), sessionID, &req)
+	// 为文件操作创建带超时的 context（数据上传可能涉及文件操作）
+	ctx, cancel := utils.WithFileOperationTimeout(c.Request.Context())
+	defer cancel()
+	
+	response, err := h.services.Session.UploadCompressedData(ctx, sessionID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeDataProcessError,

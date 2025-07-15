@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"NewsEyeTracking/internal/models"
+	"NewsEyeTracking/internal/utils"
 	"net/http"
 
 
@@ -51,7 +52,11 @@ func (h *Handlers) GetNews(c *gin.Context) {
 	}
 
 	// 测试 id  ，实际应该填写对应的 userid， 先硬编码上去再说
-	newsList, err := h.services.News.GetNews(c.Request.Context(), userID, req.Limit)
+	// 为数据库查询创建带超时的 context
+	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
+	defer cancel()
+	
+	newsList, err := h.services.News.GetNews(ctx, userID, req.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -100,7 +105,11 @@ func (h *Handlers) GetNewsDetail(c *gin.Context) {
 	}*/
 
 	// 调用服务层获取新闻详情
-	newsDetail, err := h.services.News.GetNewsDetail(c.Request.Context(), newsIDStr)
+	// 为数据库查询创建带超时的 context
+	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
+	defer cancel()
+	
+	newsDetail, err := h.services.News.GetNewsDetail(ctx, newsIDStr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
