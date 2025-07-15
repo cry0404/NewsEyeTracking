@@ -12,7 +12,7 @@ type Handlers struct {
 	services *service.Services
 }
 
-// NewHandlers 创建Handlers实例
+// 一个架构设计，通过 handler 来处理所有定义的服务
 func NewHandlers(services *service.Services) *Handlers {
 	return &Handlers{services: services}
 }

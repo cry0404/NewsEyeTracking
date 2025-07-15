@@ -31,15 +31,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// 初始化服务层
+	
 	services := service.NewServices(db)
 
-	// 创建Gin引擎
+	
 	r := gin.New()
-
-	// 添加中间件
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
+	
 
 	// 设置路由
 	routes.SetupRoutes(r, services)

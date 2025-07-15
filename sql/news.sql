@@ -10,3 +10,9 @@ LIMIT $2;
 SELECT feed_id, title, description, content, link, guid, author, published_at 
 FROM feed_items 
 WHERE id = $1;
+
+-- name: GetArticleByGUID :one 
+-- 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
+SELECT feed_id, title, description, content, link, guid, author, published_at 
+FROM feed_items 
+WHERE guid = $1;

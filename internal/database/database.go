@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"runtime"
 
 	_ "github.com/lib/pq"
 )
@@ -25,9 +26,13 @@ func Connect(dbURL string) (*sql.DB, error) {
 		return nil, fmt.Errorf("数据库连接测试失败: %w", err)
 	}
 
-	// 设置连接池参数
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	// 优化连接池参数以支持高并发
+	maxOpenConns := runtime.NumCPU() * 10  // 动态计算
+	if maxOpenConns < 50 { maxOpenConns = 50 }
+	if maxOpenConns > 200 { maxOpenConns = 200 }
+
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxOpenConns / 4)
 
 	log.Println("数据库连接成功")
 	return db, nil

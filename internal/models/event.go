@@ -1,5 +1,5 @@
 package models
-
+//应该将所有有关 event 事件的类型进行压缩，从而进行处理
 import (
 	"time"
 )
@@ -11,14 +11,14 @@ const (
 	EventTypeEye    EventType = "eye"    // 眼动事件
 	EventTypeScroll EventType = "scroll" // 滚动事件
 	EventTypeClick  EventType = "click"  // 点击事件
-)
+)//根据不同事件来判断逻辑
 
 // EyeEvent 眼动事件
 type EyeEvent struct {
 	ClassID string `json:"class_id"` // 文本分类ID
 	X       int    `json:"x"`        // X坐标
 	Y       int    `json:"y"`        // Y坐标
-}
+}//这里应该直接定义成字符串类型，最后再来处理
 
 // ScrollEvent 滚动事件
 type ScrollEvent struct {

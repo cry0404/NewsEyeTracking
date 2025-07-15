@@ -42,10 +42,10 @@ type AdditionalInfo struct {
 	ShareCount   int `json:"share_count"`
 	SaveCount    int `json:"save_count"`
 }
-
-// NewsDetailResponse 新闻详情响应（支持A/B测试）
+// 对应端点为 /new/{guid}
+// NewsDetailResponse 新闻详情响应（支持A/B测试）, 默认为空
 type NewsDetailResponse struct {
-	ID             int             `json:"id"`
+//这里不需要设置 id 了
 	GUID           string          `json:"guid"`
 	Title          string          `json:"title"`
 	Description    *string         `json:"description"`
@@ -58,11 +58,4 @@ type NewsDetailResponse struct {
 // NewsRequest 新闻列表请求参数
 type NewsRequest struct {
 	Limit int `form:"limit" binding:"omitempty,min=1,max=100"`
-}
-
-// ProcessedContent 处理过的新闻内容（包含class_id）
-type ProcessedContent struct {
-	OriginalContent string            `json:"original_content"`
-	ProcessedHTML   string            `json:"processed_html"`
-	ClassMapping    map[string]string `json:"class_mapping"` // class_id -> 原始文本映射
 }

@@ -6,7 +6,7 @@ import (
 	"context"
 )
 
-// UserService 用户服务接口
+// UserService 用户服务接口, cfud ，这里需不需要 d 呢
 type UserService interface {
 	// CreateUser 创建新用户
 	CreateUser(ctx context.Context, req *models.RegisterRequest) (*models.User, error)

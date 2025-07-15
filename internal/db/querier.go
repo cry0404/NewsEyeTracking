@@ -21,6 +21,8 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
 	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
+	// 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
+	GetArticleByGUID(ctx context.Context, guid string) (GetArticleByGUIDRow, error)
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
 	// 获取邀请码ID（注册时使用）

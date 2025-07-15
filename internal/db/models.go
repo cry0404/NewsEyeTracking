@@ -75,13 +75,3 @@ type User struct {
 	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
 	CreatedAt           sql.NullTime   `json:"created_at"`
 }
-
-type UserClickEvent struct {
-	ID        int32          `json:"id"`
-	UserID    uuid.UUID      `json:"user_id"`
-	ArticleID int32          `json:"article_id"`
-	SessionID uuid.NullUUID  `json:"session_id"`
-	ClickedAt sql.NullTime   `json:"clicked_at"`
-	IpAddress pqtype.Inet    `json:"ip_address"`
-	UserAgent sql.NullString `json:"user_agent"`
-}

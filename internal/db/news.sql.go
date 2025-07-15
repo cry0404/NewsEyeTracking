@@ -12,6 +12,40 @@ import (
 	"github.com/lib/pq"
 )
 
+const getArticleByGUID = `-- name: GetArticleByGUID :one
+SELECT feed_id, title, description, content, link, guid, author, published_at 
+FROM feed_items 
+WHERE guid = $1
+`
+
+type GetArticleByGUIDRow struct {
+	FeedID      sql.NullInt32  `json:"feed_id"`
+	Title       string         `json:"title"`
+	Description sql.NullString `json:"description"`
+	Content     sql.NullString `json:"content"`
+	Link        string         `json:"link"`
+	Guid        string         `json:"guid"`
+	Author      sql.NullString `json:"author"`
+	PublishedAt sql.NullTime   `json:"published_at"`
+}
+
+// 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
+func (q *Queries) GetArticleByGUID(ctx context.Context, guid string) (GetArticleByGUIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getArticleByGUID, guid)
+	var i GetArticleByGUIDRow
+	err := row.Scan(
+		&i.FeedID,
+		&i.Title,
+		&i.Description,
+		&i.Content,
+		&i.Link,
+		&i.Guid,
+		&i.Author,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
 const getArticleByID = `-- name: GetArticleByID :one
 SELECT feed_id, title, description, content, link, guid, author, published_at 
 FROM feed_items 
