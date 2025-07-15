@@ -50,34 +50,34 @@ type ExperimentConfig struct {
 	HasMoreInformation bool `json:"has_more_information"`
 }
 
-// UserRegisterRequest 用户注册请求 - 增强版数据验证
+
 type UserRegisterRequest struct {
 	// 必填字段
 	InviteCode string `json:"invite_code" binding:"required,min=1,max=50" validate:"required"`
-	Email      string `json:"email" binding:"required,email,max=255" validate:"required,email"`
+	//注册时没有 email 字段 Email      string `json:"email" binding:"required,email,max=255" validate:"required,email"`
 
 	// 基本信息（严格验证枚举值）
-	Gender         *string `json:"gender" binding:"omitempty,oneof=男 女" validate:"omitempty,oneof=男 女"`
-	Age            *int    `json:"age" binding:"omitempty,min=16,max=100" validate:"omitempty,min=16,max=100"`
-	DateOfBirth    *string `json:"date_of_birth" binding:"omitempty" validate:"omitempty,datetime=2006-01-02"` // 前端传送字符串格式
-	EducationLevel *string `json:"education_level" binding:"omitempty,oneof='高中及以下' '本科' '硕士' '博士及以上'" validate:"omitempty,oneof='高中及以下' '本科' '硕士' '博士及以上'"`
-	Residence      *string `json:"residence" binding:"omitempty,min=1,max=100" validate:"omitempty,min=1,max=100"`
+	Gender         *string `json:"gender" binding:"required,oneof=男 女" validate:"required,oneof=男 女"`
+	Age            *int    `json:"age" binding:"required,min=16,max=100" validate:"required,min=16,max=100"`
+	DateOfBirth    *string `json:"date_of_birth" binding:"required" validate:"required,datetime=2006-01-02"` // 前端传送字符串格式
+	EducationLevel *string `json:"education_level" binding:"required,oneof='高中及以下' '本科' '硕士' '博士及以上'" validate:"required,oneof='高中及以下' '本科' '硕士' '博士及以上'"`
+	Residence      *string `json:"residence" binding:"required,min=1,max=100" validate:"required,min=1,max=100"`
 
 	// 新闻阅读习惯
-	WeeklyReadingHours  *int    `json:"weekly_reading_hours" binding:"omitempty,oneof=1 2 3 4" validate:"omitempty,oneof=1 2 3 4"` // 1=10小时以下, 2=10-20小时, 3=30小时, 4=30小时及以上
-	PrimaryNewsPlatform *string `json:"primary_news_platform" binding:"omitempty,oneof='微信新闻' '今日头条' '新浪微博'" validate:"omitempty,oneof='微信新闻' '今日头条' '新浪微博'"`
-	IsActiveSearcher    *bool   `json:"is_active_searcher" binding:"omitempty" validate:"omitempty"`
+	WeeklyReadingHours  *int    `json:"weekly_reading_hours" binding:"required,oneof=1 2 3 4" validate:"required,oneof=1 2 3 4"` // 1=10小时以下, 2=10-20小时, 3=30小时, 4=30小时及以上
+	PrimaryNewsPlatform *string `json:"primary_news_platform" binding:"required,oneof='微信新闻' '今日头条' '新浪微博'" validate:"required,oneof='微信新闻' '今日头条' '新浪微博'"`
+	IsActiveSearcher    *bool   `json:"is_active_searcher" binding:"required" validate:"required"`
 
 	// 视觉相关
-	IsColorblind      *bool   `json:"is_colorblind" binding:"omitempty" validate:"omitempty"`
-	VisionStatus      *string `json:"vision_status" binding:"omitempty,oneof='远视' '近视' '无'" validate:"omitempty,oneof='远视' '近视' '无'"`
-	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"omitempty" validate:"omitempty"`
+	IsColorblind      *bool   `json:"is_colorblind" binding:"required" validate:"required"`
+	VisionStatus      *string `json:"vision_status" binding:"required,oneof='远视' '近视' '无'" validate:"required,oneof='远视' '近视' '无'"`
+	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"required" validate:"required"`
 }
 
-// UserUpdateRequest 用户信息更新请求 - 增强版数据验证
+
 type UserUpdateRequest struct {
 	// 基本信息
-	Email          *string `json:"email" binding:"omitempty,email,max=255" validate:"omitempty,email"`
+	// Email          *string `json:"email" binding:"omitempty,email,max=255" validate:"omitempty,email"`
 	Gender         *string `json:"gender" binding:"omitempty,oneof=男 女" validate:"omitempty,oneof=男 女"`
 	Age            *int    `json:"age" binding:"omitempty,min=16,max=100" validate:"omitempty,min=16,max=100"`
 	DateOfBirth    *string `json:"date_of_birth" binding:"omitempty" validate:"omitempty,datetime=2006-01-02"`
@@ -97,11 +97,8 @@ type UserUpdateRequest struct {
 
 // UserRegisterResponse 用户注册响应
 type UserRegisterResponse struct {
-	UserID             uuid.UUID `json:"user_id"`
-	Email              string    `json:"email"`
-	HasRecommend       bool      `json:"has_recommend"`
-	HasMoreInformation bool      `json:"has_more_information"`
-	Token              string    `json:"token"`
+	UserID uuid.UUID `json:"user_id"`
+	Token  string    `json:"token"`
 }
 
 // UserProfileResponse 用户信息响应

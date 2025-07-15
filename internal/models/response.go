@@ -3,7 +3,7 @@ package models
 // APIResponse 通用API响应结构
 type APIResponse struct {
 	Status string      `json:"status"`          // "success" 或 "error"
-	Data   interface{} `json:"data,omitempty"`  // 成功时的数据
+	Data   interface{} `json:"data,omitempty"`  // 成功时的数据, 任意的结构
 	Error  *ErrorInfo  `json:"error,omitempty"` // 错误时的信息
 }
 

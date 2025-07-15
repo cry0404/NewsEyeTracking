@@ -25,8 +25,8 @@ type Querier interface {
 	GetArticleByGUID(ctx context.Context, guid string) (GetArticleByGUIDRow, error)
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
-	// 获取邀请码ID（注册时使用）
-	GetIdByCode(ctx context.Context, code string) (uuid.UUID, error)
+	// 获取邀请码ID 和 email（注册时使用）
+	GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
 	// 会话查询
@@ -40,13 +40,13 @@ type Querier interface {
 	// A/B 测试相关查询
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
 	// 标记邀请码为已使用
-	MarkInviteCodeAsUsed(ctx context.Context, code string) (InviteCode, error)
+	MarkInviteCodeAsUsed(ctx context.Context, code string) (MarkInviteCodeAsUsedRow, error)
 	// 会话更新操作
 	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
 	UpdateSessionOSSPath(ctx context.Context, arg UpdateSessionOSSPathParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	// 验证邀请码（检查是否存在且未使用）
-	ValidateInviteCode(ctx context.Context, code string) (InviteCode, error)
+	ValidateInviteCode(ctx context.Context, code string) (ValidateInviteCodeRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

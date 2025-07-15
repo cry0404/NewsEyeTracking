@@ -31,16 +31,21 @@ func (q *Queries) GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
-const getIdByCode = `-- name: GetIdByCode :one
-SELECT id FROM invite_codes WHERE code = $1
+const getIdAndEmailByCode = `-- name: GetIdAndEmailByCode :one
+SELECT id,email FROM invite_codes WHERE code = $1
 `
 
-// 获取邀请码ID（注册时使用）
-func (q *Queries) GetIdByCode(ctx context.Context, code string) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, getIdByCode, code)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+type GetIdAndEmailByCodeRow struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+}
+
+// 获取邀请码ID 和 email（注册时使用）
+func (q *Queries) GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, getIdAndEmailByCode, code)
+	var i GetIdAndEmailByCodeRow
+	err := row.Scan(&i.ID, &i.Email)
+	return i, err
 }
 
 const markInviteCodeAsUsed = `-- name: MarkInviteCodeAsUsed :one
@@ -50,10 +55,19 @@ WHERE code = $1
 RETURNING id, code, is_used, has_recommend, has_more_information, created_at
 `
 
+type MarkInviteCodeAsUsedRow struct {
+	ID                 uuid.UUID    `json:"id"`
+	Code               string       `json:"code"`
+	IsUsed             sql.NullBool `json:"is_used"`
+	HasRecommend       sql.NullBool `json:"has_recommend"`
+	HasMoreInformation sql.NullBool `json:"has_more_information"`
+	CreatedAt          sql.NullTime `json:"created_at"`
+}
+
 // 标记邀请码为已使用
-func (q *Queries) MarkInviteCodeAsUsed(ctx context.Context, code string) (InviteCode, error) {
+func (q *Queries) MarkInviteCodeAsUsed(ctx context.Context, code string) (MarkInviteCodeAsUsedRow, error) {
 	row := q.db.QueryRowContext(ctx, markInviteCodeAsUsed, code)
-	var i InviteCode
+	var i MarkInviteCodeAsUsedRow
 	err := row.Scan(
 		&i.ID,
 		&i.Code,
@@ -71,10 +85,19 @@ FROM invite_codes
 WHERE code = $1 AND (is_used IS NULL OR is_used = FALSE)
 `
 
+type ValidateInviteCodeRow struct {
+	ID                 uuid.UUID    `json:"id"`
+	Code               string       `json:"code"`
+	IsUsed             sql.NullBool `json:"is_used"`
+	HasRecommend       sql.NullBool `json:"has_recommend"`
+	HasMoreInformation sql.NullBool `json:"has_more_information"`
+	CreatedAt          sql.NullTime `json:"created_at"`
+}
+
 // 验证邀请码（检查是否存在且未使用）
-func (q *Queries) ValidateInviteCode(ctx context.Context, code string) (InviteCode, error) {
+func (q *Queries) ValidateInviteCode(ctx context.Context, code string) (ValidateInviteCodeRow, error) {
 	row := q.db.QueryRowContext(ctx, validateInviteCode, code)
-	var i InviteCode
+	var i ValidateInviteCodeRow
 	err := row.Scan(
 		&i.ID,
 		&i.Code,

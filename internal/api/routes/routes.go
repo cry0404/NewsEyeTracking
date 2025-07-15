@@ -29,15 +29,16 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			public.GET("/version", h.Version)
 			public.GET("/health", h.HealthCheck)
 			// 用户注册（无需认证）
-			//public.POST("/auth/register", h.Register)
+			public.POST("/auth/register", h.Register)
 		}
 		//还需要 session 管理
 		protected := v1.Group("")
-		// 测试研究的时候先禁用 jwt  protected.Use(middleware.JWTAuth()) //这里每一个页面都需要有对应的 jwt
+		// 测试研究的时候先禁用 jwt  
+		protected.Use(middleware.JWTAuth()) //这里每一个页面都需要有对应的 jwt
 		{
 			//用户相关
-			//protected.GET("/auth/profile", h.GetProfile)
-			//protected.PUT("/auth/profile", h.UpdateProfile)
+			protected.GET("/auth/profile", h.GetProfile)
+			protected.PUT("/auth/profile", h.UpdateProfile)
 			
 			// 会话管理
 			//protected.POST("/sessions", h.CreateSession)

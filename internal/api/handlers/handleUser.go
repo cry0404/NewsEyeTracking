@@ -20,7 +20,7 @@ func (h *Handlers) Register(c *gin.Context) {
 		return
 	}
 
-	// 调用服务层处理注册逻辑
+	// 调用服务层处理注册逻辑，这里注册并返回一个 jwt
 	user, err := h.services.User.CreateUser(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
@@ -78,7 +78,7 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateUserRequest
+	var req models.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse(
 			models.ErrorCodeInvalidRequest,

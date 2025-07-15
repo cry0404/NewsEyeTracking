@@ -39,6 +39,7 @@ type FeedItem struct {
 
 type InviteCode struct {
 	ID                 uuid.UUID    `json:"id"`
+	Email              string       `json:"email"`
 	Code               string       `json:"code"`
 	IsUsed             sql.NullBool `json:"is_used"`
 	HasRecommend       sql.NullBool `json:"has_recommend"`

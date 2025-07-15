@@ -3,6 +3,7 @@
 -- 用户的创建将依赖于一个有效的、未使用的邀请码。
 CREATE TABLE invite_codes (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email                VARCHAR(255) NOT NULL UNIQUE,
     code                 VARCHAR(50) NOT NULL UNIQUE,
     is_used              BOOLEAN DEFAULT FALSE,
     has_recommend        BOOLEAN DEFAULT FALSE,  -- A/B测试：是否启用推荐算法

@@ -1,6 +1,7 @@
--- 获取邀请码ID（注册时使用）
--- name: GetIdByCode :one
-SELECT id FROM invite_codes WHERE code = $1;
+-- 获取邀请码ID 和 email（注册时使用）
+-- name: GetIdAndEmailByCode :one
+SELECT id,email FROM invite_codes WHERE code = $1;
+
 
 -- 验证邀请码（检查是否存在且未使用）
 -- name: ValidateInviteCode :one

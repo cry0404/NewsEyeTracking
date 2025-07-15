@@ -2,4 +2,7 @@
 *.pdf
 *.md
 docs/
+.env
 models/example.go
+test/
+.gitignore

@@ -17,12 +17,12 @@ func NewHandlers(services *service.Services) *Handlers {
 	return &Handlers{services: services}
 }
 
-// HealthCheck 健康检查端点
+
 func (h *Handlers) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-// Version 版本信息端点
+
 func (h *Handlers) Version(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"version": "1.0.0"})
 }
