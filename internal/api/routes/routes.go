@@ -30,6 +30,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			public.GET("/health", h.HealthCheck)
 			// 用户注册（无需认证）
 			public.POST("/auth/register", h.Register)
+			public.POST("/auth/codes/:code", h.ValidCode) // 没有经过中间件可以直接解析， 业务逻辑是每次都需要输入邀请码登录，发放一个新的 jwt
 		}
 		//还需要 session 管理
 		protected := v1.Group("")

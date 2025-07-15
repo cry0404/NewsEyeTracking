@@ -42,12 +42,12 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 
 	UserInfo, err := s.queries.GetIdAndEmailByCode(ctx, req.InviteCode)
 	if err != nil {
-		return nil, fmt.Errorf("邀请码无效: %w", err)
+		return nil, fmt.Errorf("邀请码无效")
 	}
 
 
 	if err := validateRequiredFields(req); err != nil {
-		return nil, fmt.Errorf("字段验证失败: %w", err)
+		return nil, fmt.Errorf("字段验证失败")
 	}
 
 
@@ -55,7 +55,7 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 	if req.DateOfBirth != nil {
 		parsedDate, err := parseDate(*req.DateOfBirth)
 		if err != nil {
-			return nil, fmt.Errorf("日期格式错误: %w", err)
+			return nil, fmt.Errorf("日期格式错误")
 		}
 		dateOfBirth = &parsedDate
 	}
@@ -78,13 +78,13 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("创建用户失败: %w", err)
+		return nil, fmt.Errorf("创建用户失败")
 	}
 
 
 	_, err = s.queries.MarkInviteCodeAsUsed(ctx, req.InviteCode)
 	if err != nil {
-		return nil, fmt.Errorf("标记邀请码已使用失败: %w", err)
+		return nil, fmt.Errorf("标记邀请码已使用失败")
 	}
 
 
@@ -98,7 +98,7 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 	}
 
 	// JWT 过期时间
-	expireDuration :=  7 * 24 * time.Hour
+	expireDuration :=  7 * 24 * time.Hour//暂时先调整这么多，等到上线再调整为 15min？
 	token, err := middleware.MakeJWT(User.ID, jwtSecret, expireDuration)
 	if err != nil {
 		return nil, fmt.Errorf("生成JWT token失败: %w", err)

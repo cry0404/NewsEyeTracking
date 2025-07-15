@@ -64,7 +64,7 @@ type MarkInviteCodeAsUsedRow struct {
 	CreatedAt          sql.NullTime `json:"created_at"`
 }
 
-// 标记邀请码为已使用
+// 标记邀请码为已使用, 这里在注册完后做标记即可
 func (q *Queries) MarkInviteCodeAsUsed(ctx context.Context, code string) (MarkInviteCodeAsUsedRow, error) {
 	row := q.db.QueryRowContext(ctx, markInviteCodeAsUsed, code)
 	var i MarkInviteCodeAsUsedRow

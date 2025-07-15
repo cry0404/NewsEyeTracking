@@ -42,21 +42,17 @@ CREATE TABLE users (
 
 -- 创建阅读会话表（使用UUID作为主键）
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE reading_sessions (
+-- reding 就代表一个事件，包括阅读主页，以及阅读文章
+CREATE TABLE reading (
     id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id              UUID NOT NULL, -- 引用 users.id, 类型必须是 UUID
-    article_id           INTEGER NOT NULL,  -- 引用 feed_items 表 (假设在其他 migration 中定义)
+    article_id           INTEGER NOT NULL,  -- 将列表页定义为 0 ， 这样就独立了列表的数据记录？
     start_time           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     end_time             TIMESTAMP WITH TIME ZONE,
-    device_info          JSONB,  -- 设备信息
+    device_info          JSONB,  
     
-    -- OSS存储相关
-    oss_file_path        VARCHAR(512),    -- OSS中压缩数据文件的路径
-    data_size            BIGINT DEFAULT 0,  -- 压缩数据的大小（字节）
-    event_count          INTEGER DEFAULT 0, -- 事件总数
     
-    session_duration_ms  BIGINT,  -- 会话持续时间（毫秒）
+    session_duration_ms  BIGINT,  -- 感觉其实不太需要
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (article_id) REFERENCES feed_items(id) ON DELETE CASCADE -- 确保 feed_items 表存在
@@ -65,18 +61,18 @@ CREATE TABLE reading_sessions (
 -- 索引
 CREATE INDEX idx_invite_codes_code ON invite_codes(code); -- 为邀请码查询添加索引
 CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_sessions_user_article ON reading_sessions(user_id, article_id);
-CREATE INDEX idx_sessions_start_time ON reading_sessions(start_time);
-CREATE INDEX idx_sessions_user_time ON reading_sessions(user_id, start_time);
-CREATE INDEX idx_sessions_oss_path ON reading_sessions(oss_file_path);
-CREATE INDEX idx_sessions_end_time ON reading_sessions(end_time);
+CREATE INDEX idx_sessions_user_article ON reading(user_id, article_id);
+CREATE INDEX idx_sessions_start_time ON reading(start_time);
+CREATE INDEX idx_sessions_user_time ON reading(user_id, start_time);
+
+CREATE INDEX idx_sessions_end_time ON reading(end_time);
 
 -- - invite_codes: 只需要 created_at (邀请码不会被修改)
 -- - users: 只需要 created_at (用户信息更新在应用层处理)
--- - reading_sessions: 使用 start_time 和 end_time 跟踪会话生命周期
+-- - reading: 使用 start_time 和 end_time 跟踪会话生命周期
 
 -- +goose Down
-DROP TABLE IF EXISTS reading_sessions;
+DROP TABLE IF EXISTS reading;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS invite_codes; 
 

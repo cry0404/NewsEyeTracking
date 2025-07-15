@@ -14,7 +14,7 @@ const (
 	ComplexQueryTimeout = 10 * time.Second
 	
 	// 写操作超时时间
-	WriteOperationTimeout = 3 * time.Second
+	WriteOperationTimeout = 10 * time.Second
 	
 	// 认证操作超时时间
 	AuthOperationTimeout = 2 * time.Second

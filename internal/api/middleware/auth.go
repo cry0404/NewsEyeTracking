@@ -15,11 +15,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// MakeJWT 创建JWT令牌
+// MakeJWT 创建JWT令牌， 前端存储到 session storage 中去， 这样来管理会话
 func MakeJWT(userID uuid.UUID, tokenSecret string, expireIn time.Duration) (string, error) {
 	claims := jwt.RegisteredClaims{
 		Issuer:    "Eyetracking",
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),//每次登录都会颁发一个新的
 		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expireIn)),
 		Subject:   userID.String(),
 	}

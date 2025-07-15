@@ -4,16 +4,14 @@ import (
 	"NewsEyeTracking/internal/db"
 	"NewsEyeTracking/internal/models"
 	"context"
+	"fmt"
 )
 
 // AuthService 认证服务接口， 服务由接口构成
 type AuthService interface {
 	// ValidateInviteCode 验证邀请码
 	ValidateInviteCode(ctx context.Context, code string) (*models.InviteCode, error)
-	// GenerateJWT 生成JWT令牌
-	GenerateJWT(userID string, inviteCodeID int) (string, error)
-	// ValidateJWT 验证JWT令牌
-	ValidateJWT(tokenString string) (*models.JWTClaims, error)
+	//认证层目前就考虑验证邀请码
 }
 
 // authService 认证服务实现
@@ -28,26 +26,23 @@ func NewAuthService(queries *db.Queries) AuthService {
 
 // ValidateInviteCode 实现邀请码验证逻辑
 func (s *authService) ValidateInviteCode(ctx context.Context, code string) (*models.InviteCode, error) {
-	// TODO: 实现邀请码验证逻辑
-	// 1. 查找邀请码
-	// 2. 验证是否已被使用
-	// 3. 返回邀请码信息
-	return nil, nil
-}
+	// 查询邀请码 - SQL 已经过滤了已使用的邀请码
+	codeInfo, err := s.queries.ValidateInviteCode(ctx, code)
 
-// GenerateJWT 实现JWT生成逻辑
-func (s *authService) GenerateJWT(userID string, inviteCodeID int) (string, error) {
-	// TODO: 实现JWT生成逻辑
-	// 1. 创建JWT claims
-	// 2. 生成并签名token
-	return "", nil
-}
+	if err != nil {
+		return nil, fmt.Errorf("code 查询失败，邀请码错误 : %w", err)
+	}
 
-// ValidateJWT 实现JWT验证逻辑
-func (s *authService) ValidateJWT(tokenString string) (*models.JWTClaims, error) {
-	// TODO: 实现JWT验证逻辑
-	// 1. 解析token
-	// 2. 验证签名
-	// 3. 返回claims
-	return nil, nil
+	// 不需要再次检查 IsUsed，因为 SQL 查询已经过滤了已使用的邀请码
+	// 将数据库模型转换为业务模型
+	inviteCode := &models.InviteCode{
+		ID:                 codeInfo.ID,
+		Code:               codeInfo.Code,
+		IsUsed:             codeInfo.IsUsed.Bool, 
+		HasRecommend:       codeInfo.HasRecommend.Bool,
+		HasMoreInformation: codeInfo.HasMoreInformation.Bool,
+		CreatedAt:          codeInfo.CreatedAt.Time,
+	}
+
+	return inviteCode, nil
 }
