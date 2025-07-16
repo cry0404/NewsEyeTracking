@@ -44,6 +44,11 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			protected.POST("/auth/profile", h.UpdateProfile)
 			protected.POST("/auth/profile/", h.UpdateProfile)
 			
+			// 用户会话管理（简化版）
+			protected.POST("/session/init", h.InitUserSession)           // 初始化用户会话
+			protected.POST("/session/data", h.ProcessSessionData)       // 统一数据上传接口（包含心跳和眼动数据）
+			protected.GET("/session/status", h.GetCurrentSessionStatus) // 获取当前用户会话状态
+			
 			// 会话管理
 			//protected.POST("/sessions", h.CreateSession)
 			//protected.PATCH("/sessions/:session_id", h.EndSession)

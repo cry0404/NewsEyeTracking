@@ -31,8 +31,14 @@ func main() {
 	}
 	defer db.Close()
 
-	
-	services := service.NewServices(db)
+	// 连接Redis
+	redisClient, err := database.NewRedisClient()
+	if err != nil {
+		log.Fatal("Redis连接失败:", err)
+	}
+	defer redisClient.Close()
+
+	services := service.NewServices(db, redisClient)
 
 	
 	r := gin.New()
