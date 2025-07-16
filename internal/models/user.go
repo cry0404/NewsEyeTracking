@@ -15,6 +15,7 @@ type InviteCode struct {
 	HasRecommend       bool       `json:"has_recommend" db:"has_recommend"`               // 是否启用推荐算法
 	HasMoreInformation bool       `json:"has_more_information" db:"has_more_information"` // 信息
 	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
+	Count   			int64     `json:"count" db:"count"`
 }
 
 // User 表这里应该需要绑定 bind ，应该要做一些 require， 对于前端发送过来的字段

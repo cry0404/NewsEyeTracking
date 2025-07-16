@@ -59,6 +59,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			//protected.POST("/sessions/:session_id/data", h.UploadCompressedData)
 			*/
 			{
+			
 				newsProtected.GET("/news/", h.GetNews)
 				newsProtected.GET("/news", h.GetNews)
 				newsProtected.GET("/news/:id", h.GetNewsDetail)

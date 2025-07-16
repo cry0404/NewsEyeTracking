@@ -38,13 +38,14 @@ type FeedItem struct {
 }
 
 type InviteCode struct {
-	ID                 uuid.UUID    `json:"id"`
-	Email              string       `json:"email"`
-	Code               string       `json:"code"`
-	IsUsed             sql.NullBool `json:"is_used"`
-	HasRecommend       sql.NullBool `json:"has_recommend"`
-	HasMoreInformation sql.NullBool `json:"has_more_information"`
-	CreatedAt          sql.NullTime `json:"created_at"`
+	ID                 uuid.UUID     `json:"id"`
+	Email              string        `json:"email"`
+	Code               string        `json:"code"`
+	IsUsed             sql.NullBool  `json:"is_used"`
+	HasRecommend       sql.NullBool  `json:"has_recommend"`
+	HasMoreInformation sql.NullBool  `json:"has_more_information"`
+	CreatedAt          sql.NullTime  `json:"created_at"`
+	Count              sql.NullInt32 `json:"count"`
 }
 
 type ReadingSession struct {
@@ -54,9 +55,6 @@ type ReadingSession struct {
 	StartTime         sql.NullTime          `json:"start_time"`
 	EndTime           sql.NullTime          `json:"end_time"`
 	DeviceInfo        pqtype.NullRawMessage `json:"device_info"`
-	OssFilePath       sql.NullString        `json:"oss_file_path"`
-	DataSize          sql.NullInt64         `json:"data_size"`
-	EventCount        sql.NullInt32         `json:"event_count"`
 	SessionDurationMs sql.NullInt64         `json:"session_duration_ms"`
 }
 

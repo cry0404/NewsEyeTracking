@@ -11,6 +11,7 @@ type Services struct {
 	News    NewsService
 	Session SessionService
 	Auth    AuthService
+	Upload  UploadService
 }
 
 // NewServices 创建服务层实例
@@ -22,5 +23,6 @@ func NewServices(database *sql.DB) *Services {
 		News:    NewNewsService(queries),
 		Session: NewSessionService(queries),
 		Auth:    NewAuthService(queries),
+		Upload:  NewUploadService(queries),
 	}
 }

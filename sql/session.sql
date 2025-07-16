@@ -24,13 +24,6 @@ UPDATE reading_sessions SET
     session_duration_ms = EXTRACT(EPOCH FROM ($2 - start_time)) * 1000
 WHERE id = $1 RETURNING *;
 
--- name: UpdateSessionOSSPath :exec
-UPDATE reading_sessions SET
-    oss_file_path = $2,
-    data_size = $3,
-    event_count = $4
-WHERE id = $1;
-
 -- 会话统计查询
 -- name: GetUserSessionStats :many
 SELECT 

@@ -1,5 +1,5 @@
 package utils
-
+//作为工具函数来使用， 这里主要考虑如何上传，是否需要上传到 oss 或者自建的图床？
 import (
 	"archive/zip"
 	"context"

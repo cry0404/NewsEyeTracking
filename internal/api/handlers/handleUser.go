@@ -21,12 +21,11 @@ func (h *Handlers) Register(c *gin.Context) {
 		return
 	}
 
-	// 调用服务层处理注册逻辑，这里注册并返回一个 jwt
-	// 为认证操作创建带超时的 context
+	//只需要在 createuser 部分标记使用就可以了，在邀请码登录部分增加次数
 	ctx, cancel := utils.WithAuthTimeout(c.Request.Context())
 	defer cancel()
 	
-	user, err := h.services.User.CreateUser(ctx, &req)
+	registerUser, err := h.services.User.CreateUser(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -37,7 +36,7 @@ func (h *Handlers) Register(c *gin.Context) {
 	}
 
 	// 返回成功响应
-	c.JSON(http.StatusCreated, models.SuccessResponse(user))
+	c.JSON(http.StatusCreated, models.SuccessResponse(registerUser))
 }
 
 // GetProfile 获取用户个人资料
@@ -133,8 +132,28 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
 	defer cancel()
 	//查询数据库默认加一个查询 context 避免超时太多
-	_, err := h.services.Auth.ValidateInviteCode(ctx, code) //返回来的不重要，只需要验证即可
+	codeInfo, err := h.services.Auth.ValidateInviteCode(ctx, code) 
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+			models.ErrorCodeInternalError,
+			"获取邀请码失败",
+			"邀请码不存在",
+		))
+		return
+	}
+
+	if !codeInfo.IsUsed {
+		//在没有注册的情况下， 然后等着在 createUser 部分等着做验证和创建
+
+		c.JSON(http.StatusOK, models.SuccessResponse(gin.H{
+			"valid": "true",
+		}))
+		return
+	}
+	//这里就可以通过 userid 来返回类似于注册时的用户信息了
+	userID := codeInfo.ID
+	token, err := h.services.User.UpdateLoginState(ctx, userID)
+	if err != nil{
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
 			"获取邀请码失败",
@@ -142,9 +161,8 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 		))
 		return
 	}
-
 	c.JSON(http.StatusOK, models.SuccessResponse(gin.H{
-		"valid": "true",
+		"token": token,
 	}))
-
+	
 }

@@ -12,6 +12,36 @@ import (
 	"github.com/google/uuid"
 )
 
+const findCodeAndIncrementCount = `-- name: FindCodeAndIncrementCount :one
+UPDATE invite_codes
+SET count = CASE
+                WHEN is_used = TRUE THEN COALESCE(count, 0) + 1
+                ELSE count -- 如果 is_used 为 FALSE，则 count 保持不变
+            END
+WHERE code = $1
+RETURNING id, code, is_used, count
+`
+
+type FindCodeAndIncrementCountRow struct {
+	ID     uuid.UUID     `json:"id"`
+	Code   string        `json:"code"`
+	IsUsed sql.NullBool  `json:"is_used"`
+	Count  sql.NullInt32 `json:"count"`
+}
+
+// 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
+func (q *Queries) FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error) {
+	row := q.db.QueryRowContext(ctx, findCodeAndIncrementCount, code)
+	var i FindCodeAndIncrementCountRow
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.IsUsed,
+		&i.Count,
+	)
+	return i, err
+}
+
 const getABTestConfigByInviteCodeID = `-- name: GetABTestConfigByInviteCodeID :one
 SELECT has_recommend, has_more_information 
 FROM invite_codes 
@@ -48,63 +78,14 @@ func (q *Queries) GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAn
 	return i, err
 }
 
-const markInviteCodeAsUsed = `-- name: MarkInviteCodeAsUsed :one
+const markInviteCodeAsUsed = `-- name: MarkInviteCodeAsUsed :exec
 UPDATE invite_codes 
 SET is_used = TRUE 
-WHERE code = $1 
-RETURNING id, code, is_used, has_recommend, has_more_information, created_at
+WHERE code = $1
 `
 
-type MarkInviteCodeAsUsedRow struct {
-	ID                 uuid.UUID    `json:"id"`
-	Code               string       `json:"code"`
-	IsUsed             sql.NullBool `json:"is_used"`
-	HasRecommend       sql.NullBool `json:"has_recommend"`
-	HasMoreInformation sql.NullBool `json:"has_more_information"`
-	CreatedAt          sql.NullTime `json:"created_at"`
-}
-
-// 标记邀请码为已使用, 这里在注册完后做标记即可
-func (q *Queries) MarkInviteCodeAsUsed(ctx context.Context, code string) (MarkInviteCodeAsUsedRow, error) {
-	row := q.db.QueryRowContext(ctx, markInviteCodeAsUsed, code)
-	var i MarkInviteCodeAsUsedRow
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.IsUsed,
-		&i.HasRecommend,
-		&i.HasMoreInformation,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const validateInviteCode = `-- name: ValidateInviteCode :one
-SELECT id, code, is_used, has_recommend, has_more_information, created_at 
-FROM invite_codes 
-WHERE code = $1 AND (is_used IS NULL OR is_used = FALSE)
-`
-
-type ValidateInviteCodeRow struct {
-	ID                 uuid.UUID    `json:"id"`
-	Code               string       `json:"code"`
-	IsUsed             sql.NullBool `json:"is_used"`
-	HasRecommend       sql.NullBool `json:"has_recommend"`
-	HasMoreInformation sql.NullBool `json:"has_more_information"`
-	CreatedAt          sql.NullTime `json:"created_at"`
-}
-
-// 验证邀请码（检查是否存在且未使用）
-func (q *Queries) ValidateInviteCode(ctx context.Context, code string) (ValidateInviteCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, validateInviteCode, code)
-	var i ValidateInviteCodeRow
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.IsUsed,
-		&i.HasRecommend,
-		&i.HasMoreInformation,
-		&i.CreatedAt,
-	)
-	return i, err
+// 只查询邀请码信息（不增加计数，用于纯查询场景）
+func (q *Queries) MarkInviteCodeAsUsed(ctx context.Context, code string) error {
+	_, err := q.db.ExecContext(ctx, markInviteCodeAsUsed, code)
+	return err
 }

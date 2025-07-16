@@ -25,6 +25,8 @@ type UserService interface {
 	UpdateUser(ctx context.Context, userID string, req *models.UserUpdateRequest) (*models.User, error)
 	// GetUserABTestConfig 获取用户A/B测试配置
 	GetUserABTestConfig(ctx context.Context, inviteCodeID uuid.UUID) (*models.ABTestConfig, error)
+	// UpdateLoginCount 更新登录状态
+	 UpdateLoginState(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 // userService 用户服务实现
@@ -81,13 +83,13 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 		return nil, fmt.Errorf("创建用户失败")
 	}
 
-
-	_, err = s.queries.MarkInviteCodeAsUsed(ctx, req.InviteCode)
+	// 这里标记一次就够了， user_service 调用 handleUser 的方法
+	err = s.queries.MarkInviteCodeAsUsed(ctx, req.InviteCode)
 	if err != nil {
-		return nil, fmt.Errorf("标记邀请码已使用失败")
+		return nil, fmt.Errorf("邀请码使用失败")
 	}
 
-
+	//把生成 jwt token 直接封装成一个方法
 	err = godotenv.Load()
 	if err != nil {
 		return nil, fmt.Errorf("加载环境变量失败: %w", err)
@@ -207,6 +209,8 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *models
 	}, nil
 }
 
+
+
 // GetUserABTestConfig 获取用户A/B测试配置
 func (s *userService) GetUserABTestConfig(ctx context.Context, inviteCodeID uuid.UUID) (*models.ABTestConfig, error) {
 	info, err := s.queries.GetABTestConfigByInviteCodeID(ctx, inviteCodeID)
@@ -218,6 +222,27 @@ func (s *userService) GetUserABTestConfig(ctx context.Context, inviteCodeID uuid
 		HasRecommend:       info.HasRecommend.Bool,
 		HasMoreInformation: info.HasMoreInformation.Bool,
 	}, nil
+}
+
+func (s *userService) UpdateLoginState(ctx context.Context, userID uuid.UUID) (string, error) {
+	err := godotenv.Load()
+	if err != nil {
+		return "", fmt.Errorf("加载环境变量失败: %w", err)
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT_SECRET 环境变量未设置")
+	}
+
+	// JWT 过期时间
+	expireDuration :=  7 * 24 * time.Hour//暂时先调整这么多，等到上线再调整为 15min？
+	token, err := middleware.MakeJWT(userID, jwtSecret, expireDuration)
+	if err != nil {
+		return "", fmt.Errorf("生成JWT token失败: %w", err)
+	}
+
+	
+	return token, nil
 }
 // 辅助函数：解析日期字符串
 func parseDate(dateStr string) (time.Time, error) {

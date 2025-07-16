@@ -19,6 +19,8 @@ type Querier interface {
 	// 用户 CRUD 操作
 	// 用户 ID 来自邀请码 ID，建立一对一关系
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
+	FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error)
 	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
 	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
 	// 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
@@ -39,14 +41,11 @@ type Querier interface {
 	GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error)
 	// A/B 测试相关查询
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
-	// 标记邀请码为已使用
-	MarkInviteCodeAsUsed(ctx context.Context, code string) (MarkInviteCodeAsUsedRow, error)
+	// 只查询邀请码信息（不增加计数，用于纯查询场景）
+	MarkInviteCodeAsUsed(ctx context.Context, code string) error
 	// 会话更新操作
 	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
-	UpdateSessionOSSPath(ctx context.Context, arg UpdateSessionOSSPathParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
-	// 验证邀请码（检查是否存在且未使用）
-	ValidateInviteCode(ctx context.Context, code string) (ValidateInviteCodeRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

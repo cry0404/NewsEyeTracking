@@ -19,7 +19,7 @@ INSERT INTO reading_sessions (
     id, article_id, start_time, device_info, user_id
 )VALUES(
     uuid_generate_v4(), $1, $2, $3, $4
-) RETURNING id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms
+) RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms
 `
 
 type CreateSessionParams struct {
@@ -48,16 +48,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (R
 		&i.StartTime,
 		&i.EndTime,
 		&i.DeviceInfo,
-		&i.OssFilePath,
-		&i.DataSize,
-		&i.EventCount,
 		&i.SessionDurationMs,
 	)
 	return i, err
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms FROM reading_sessions WHERE id = $1
+SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms FROM reading_sessions WHERE id = $1
 `
 
 // 会话查询
@@ -71,16 +68,13 @@ func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSess
 		&i.StartTime,
 		&i.EndTime,
 		&i.DeviceInfo,
-		&i.OssFilePath,
-		&i.DataSize,
-		&i.EventCount,
 		&i.SessionDurationMs,
 	)
 	return i, err
 }
 
 const getUserActiveSessions = `-- name: GetUserActiveSessions :many
-SELECT id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL
+SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL
 `
 
 func (q *Queries) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error) {
@@ -99,9 +93,6 @@ func (q *Queries) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) (
 			&i.StartTime,
 			&i.EndTime,
 			&i.DeviceInfo,
-			&i.OssFilePath,
-			&i.DataSize,
-			&i.EventCount,
 			&i.SessionDurationMs,
 		); err != nil {
 			return nil, err
@@ -168,7 +159,7 @@ const updateSessionEndTime = `-- name: UpdateSessionEndTime :one
 UPDATE reading_sessions SET
     end_time = $2,
     session_duration_ms = EXTRACT(EPOCH FROM ($2 - start_time)) * 1000
-WHERE id = $1 RETURNING id, user_id, article_id, start_time, end_time, device_info, oss_file_path, data_size, event_count, session_duration_ms
+WHERE id = $1 RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms
 `
 
 type UpdateSessionEndTimeParams struct {
@@ -187,35 +178,7 @@ func (q *Queries) UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEnd
 		&i.StartTime,
 		&i.EndTime,
 		&i.DeviceInfo,
-		&i.OssFilePath,
-		&i.DataSize,
-		&i.EventCount,
 		&i.SessionDurationMs,
 	)
 	return i, err
-}
-
-const updateSessionOSSPath = `-- name: UpdateSessionOSSPath :exec
-UPDATE reading_sessions SET
-    oss_file_path = $2,
-    data_size = $3,
-    event_count = $4
-WHERE id = $1
-`
-
-type UpdateSessionOSSPathParams struct {
-	ID          uuid.UUID      `json:"id"`
-	OssFilePath sql.NullString `json:"oss_file_path"`
-	DataSize    sql.NullInt64  `json:"data_size"`
-	EventCount  sql.NullInt32  `json:"event_count"`
-}
-
-func (q *Queries) UpdateSessionOSSPath(ctx context.Context, arg UpdateSessionOSSPathParams) error {
-	_, err := q.db.ExecContext(ctx, updateSessionOSSPath,
-		arg.ID,
-		arg.OssFilePath,
-		arg.DataSize,
-		arg.EventCount,
-	)
-	return err
 }
