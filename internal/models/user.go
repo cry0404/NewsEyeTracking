@@ -52,7 +52,7 @@ type ExperimentConfig struct {
 }
 
 
-type UserRegisterRequest struct {
+/*type UserRegisterRequest struct {
 	// 必填字段
 	InviteCode string `json:"invite_code" binding:"required,min=1,max=50" validate:"required"`
 	//注册时没有 email 字段 Email      string `json:"email" binding:"required,email,max=255" validate:"required,email"`
@@ -73,10 +73,10 @@ type UserRegisterRequest struct {
 	IsColorblind      *bool   `json:"is_colorblind" binding:"required" validate:"required"`
 	VisionStatus      *string `json:"vision_status" binding:"required,oneof='远视' '近视' '无'" validate:"required,oneof='远视' '近视' '无'"`
 	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"required" validate:"required"`
-}
+}*/
 
 
-type UserUpdateRequest struct {
+type UserRequest struct {
 	// 基本信息
 	// Email          *string `json:"email" binding:"omitempty,email,max=255" validate:"omitempty,email"`
 	Gender         *string `json:"gender" binding:"omitempty,oneof=男 女" validate:"omitempty,oneof=男 女"`
@@ -168,7 +168,7 @@ func ValidateReadingHours(hours int) bool {
 }
 
 // RegisterRequest 用户注册请求的别名，保持向后兼容
-type RegisterRequest = UserRegisterRequest
+type RegisterRequest = UserRequest
 
 // ABTestConfig A/B测试配置的别名，保持向后兼容
 type ABTestConfig = ExperimentConfig

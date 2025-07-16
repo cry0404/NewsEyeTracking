@@ -8,8 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Register 处理用户注册
+// Register 处理用户注册，现在不需要 register 方法了
 // POST /api/v1/auth/register
+/*
 func (h *Handlers) Register(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -37,7 +38,7 @@ func (h *Handlers) Register(c *gin.Context) {
 
 	// 返回成功响应
 	c.JSON(http.StatusCreated, models.SuccessResponse(registerUser))
-}
+}*/
 
 // GetProfile 获取用户个人资料
 // GET /api/v1/auth/profile
@@ -73,7 +74,7 @@ func (h *Handlers) GetProfile(c *gin.Context) {
 }
 
 // UpdateProfile 更新用户个人资料
-// PUT /api/v1/auth/profile
+// POST /api/v1/auth/profile ， 现在统一两个接口
 func (h *Handlers) UpdateProfile(c *gin.Context) {
 	// 从JWT中间件获取用户ID
 	userID, exists := c.Get("userID")
@@ -86,7 +87,7 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var req models.UserUpdateRequest
+	var req models.UserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse(
 			models.ErrorCodeInvalidRequest,
@@ -142,15 +143,16 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 		return
 	}
 
-	if !codeInfo.IsUsed {
+	/*if !codeInfo.IsUsed {
 		//在没有注册的情况下， 然后等着在 createUser 部分等着做验证和创建
 
 		c.JSON(http.StatusOK, models.SuccessResponse(gin.H{
 			"valid": "true",
 		}))
 		return
-	}
-	//这里就可以通过 userid 来返回类似于注册时的用户信息了
+	}*/
+
+	//这里就可以通过 userid 来返回类似于注册时的用户信息了, 无论如何第一次都应该返回，然后统一接口
 	userID := codeInfo.ID
 	token, err := h.services.User.UpdateLoginState(ctx, userID)
 	if err != nil{
@@ -161,8 +163,9 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 		))
 		return
 	}
-	c.JSON(http.StatusOK, models.SuccessResponse(gin.H{
-		"token": token,
+	c.JSON(http.StatusOK, models.SuccessResponse(models.UserRegisterResponse{
+		UserID: userID,
+		Token: token,
 	}))
 	
 }

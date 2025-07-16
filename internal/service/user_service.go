@@ -17,12 +17,12 @@ import (
 //这里还缺失了检验邀请码这一逻辑，邀请码应该使用 hash 值来跟数据库中的做对比
 // UserService 用户服务接口, crud ，这里需不需要 d 呢
 type UserService interface {
-	// CreateUser 创建新用户（包含JWT生成）
-	CreateUser(ctx context.Context, req *models.RegisterRequest) (*models.UserRegisterResponse, error)
+	// CreateUser 创建新用户（包含JWT生成）， 统一到 updateUser 接口
+	//CreateUser(ctx context.Context, req *models.UserRequest) (*models.UserRegisterResponse, error)
 	// GetUserByID 根据ID获取用户信息
 	GetUserByID(ctx context.Context, userID string) (*models.User, error)
 	// UpdateUser 更新用户信息
-	UpdateUser(ctx context.Context, userID string, req *models.UserUpdateRequest) (*models.User, error)
+	UpdateUser(ctx context.Context, userID string, req *models.UserRequest) (*models.User, error)
 	// GetUserABTestConfig 获取用户A/B测试配置
 	GetUserABTestConfig(ctx context.Context, inviteCodeID uuid.UUID) (*models.ABTestConfig, error)
 	// UpdateLoginCount 更新登录状态
@@ -38,10 +38,10 @@ type userService struct {
 func NewUserService(queries *db.Queries) UserService {
 	return &userService{queries: queries}
 }
-
+/*
 // CreateUser 实现用户创建逻辑（包含JWT生成）
-func (s *userService) CreateUser(ctx context.Context, req *models.RegisterRequest) (*models.UserRegisterResponse, error) {
-
+func (s *userService) CreateUser(ctx context.Context, req *models.UserRequest) (*models.UserRegisterResponse, error) {
+//现在创建不需要 invitecode 了，随便更新
 	UserInfo, err := s.queries.GetIdAndEmailByCode(ctx, req.InviteCode)
 	if err != nil {
 		return nil, fmt.Errorf("邀请码无效")
@@ -111,7 +111,7 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 		UserID: User.ID,
 		Token:  token,
 	}, nil
-}
+}*/
 
 
 // GetUserByID 根据ID获取用户信息
@@ -145,7 +145,7 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*models.U
 }
 
 // UpdateUser 更新用户信息， 用于 auth/profile 页，针对
-func (s *userService) UpdateUser(ctx context.Context, userID string, req *models.UserUpdateRequest) (*models.User, error) {
+func (s *userService) UpdateUser(ctx context.Context, userID string, req *models.UserRequest) (*models.User, error) {
 	// 解析用户ID
 	newUserID, err := uuid.Parse(userID)
 	if err != nil {
@@ -306,7 +306,7 @@ func buildNullBool(newValue *bool, currentValue sql.NullBool) sql.NullBool {
 	return currentValue
 }
 
-// 验证所有必填字段
+/*
 func validateRequiredFields(req *models.RegisterRequest) error {
 	if req.Gender == nil {
 		return fmt.Errorf("性别字段不能为空")
@@ -343,3 +343,5 @@ func validateRequiredFields(req *models.RegisterRequest) error {
 	}
 	return nil
 }
+*/ 
+//都可以为空，不需要强制验证了

@@ -7,8 +7,8 @@ SELECT id,email FROM invite_codes WHERE code = $1;
 -- name: FindCodeAndIncrementCount :one
 UPDATE invite_codes
 SET count = CASE
-                WHEN is_used = TRUE THEN COALESCE(count, 0) + 1
-                ELSE count -- 如果 is_used 为 FALSE，则 count 保持不变
+                WHEN is_used = TRUE or FALSE THEN COALESCE(count, 0) + 1
+                ELSE count -- 无论有没有被使用都增加
             END
 WHERE code = $1
 RETURNING id, code, is_used, count;
