@@ -11,8 +11,6 @@ import (
 )
 
 type Querier interface {
-	// 检查是否有其他用户的活跃会话（用于单会话限制）
-	CheckOtherActiveUserSessions(ctx context.Context, userID uuid.UUID) ([]UserSession, error)
 	// 创建一个新的会话，相当于打开了一篇新的网页，开启了新的事件
 	// 初始的 endtime 应该是为空的, oss 存储路径应该暂定, 这里的 starttime 应该是有的
 	// 但是 endtime 应该是待定的，由前端发回来的信息， sessionid 作为打包区分，
@@ -22,16 +20,10 @@ type Querier interface {
 	// 用户 ID 来自邀请码 ID，建立一对一关系
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// 创建新的用户会话
-	CreateUserSession(ctx context.Context, arg CreateUserSessionParams) (UserSession, error)
-	// 结束用户会话
-	EndUserSession(ctx context.Context, id uuid.UUID) error
+	CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error
 	// 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
 	// 如果 code 存在，就增加 count，无论 is_used 是什么
 	FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error)
-	// 查找过期的会话（超过5分钟没有心跳）
-	FindExpiredSessions(ctx context.Context) ([]UserSession, error)
-	// 强制结束其他用户的活跃会话
-	ForceEndOtherUserSessions(ctx context.Context, userID uuid.UUID) error
 	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
 	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
 	// 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
@@ -45,28 +37,18 @@ type Querier interface {
 	// 会话查询
 	GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSession, error)
 	GetUserABTestConfig(ctx context.Context, id uuid.UUID) (GetUserABTestConfigRow, error)
-	// 获取用户的活跃会话
-	GetUserActiveSession(ctx context.Context, userID uuid.UUID) (UserSession, error)
 	GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// 会话统计查询
 	GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error)
-	// 获取用户会话详情（包含相关的阅读会话）
-	GetUserSessionWithReadingSessions(ctx context.Context, id uuid.UUID) (GetUserSessionWithReadingSessionsRow, error)
 	// A/B 测试相关查询
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
-	// 批量设置过期会话为非活跃状态
-	MarkExpiredSessionsInactive(ctx context.Context) error
 	// 只查询邀请码信息（不增加计数，用于纯查询场景）
 	MarkInviteCodeAsUsed(ctx context.Context, code string) error
 	// 会话更新操作
 	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
-	// 更新会话心跳时间
-	UpdateSessionHeartbeat(ctx context.Context, arg UpdateSessionHeartbeatParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
-	// 统一的用户创建/更新接口，支持 UPSERT 操作
-	UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

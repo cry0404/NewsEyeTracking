@@ -1,14 +1,15 @@
 -- +goose Up
 -- 创建用户登录会话表
 CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- 这个就是 session_id
     user_id UUID NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active BOOLEAN DEFAULT TRUE,
     created_date DATE DEFAULT CURRENT_DATE,
+    end_time TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES invite_codes(id) ON DELETE CASCADE
 );
 
 -- 为reading_sessions表添加user_session_id字段

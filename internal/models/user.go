@@ -93,12 +93,12 @@ type UserRequest struct {
 	VisionStatus      *string `json:"vision_status" binding:"omitempty,oneof='远视' '近视' '无'" validate:"omitempty,oneof='远视' '近视' '无'"`
 	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"omitempty" validate:"omitempty"`
 }
-
+/*
 // UserRegisterResponse 用户注册响应
 type UserRegisterResponse struct {
 	UserID uuid.UUID `json:"user_id"`
 	Token  string    `json:"token"`
-}
+}*/
 
 // UserProfileResponse 用户信息响应
 type UserProfileResponse struct {

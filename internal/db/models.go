@@ -83,4 +83,5 @@ type UserSession struct {
 	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
 	IsActive      sql.NullBool `json:"is_active"`
 	CreatedDate   sql.NullTime `json:"created_date"`
+	EndTime       sql.NullTime `json:"end_time"`
 }

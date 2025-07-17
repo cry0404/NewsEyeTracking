@@ -8,37 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Register 处理用户注册，现在不需要 register 方法了
-// POST /api/v1/auth/register
-/*
-func (h *Handlers) Register(c *gin.Context) {
-	var req models.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse(
-			models.ErrorCodeInvalidRequest,
-			"请求参数不正确",
-			err.Error(),
-		))
-		return
-	}
 
-	//只需要在 createuser 部分标记使用就可以了，在邀请码登录部分增加次数
-	ctx, cancel := utils.WithAuthTimeout(c.Request.Context())
-	defer cancel()
-	
-	registerUser, err := h.services.User.CreateUser(ctx, &req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
-			models.ErrorCodeInternalError,
-			"注册失败",
-			err.Error(),
-		))
-		return
-	}
-
-	// 返回成功响应
-	c.JSON(http.StatusCreated, models.SuccessResponse(registerUser))
-}*/
 
 // GetProfile 获取用户个人资料
 // GET /api/v1/auth/profile
@@ -116,4 +86,37 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, models.SuccessResponse(user))
 }
 
+
+
+// Register 处理用户注册，现在不需要 register 方法了
+// POST /api/v1/auth/register
+/*
+func (h *Handlers) Register(c *gin.Context) {
+	var req models.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse(
+			models.ErrorCodeInvalidRequest,
+			"请求参数不正确",
+			err.Error(),
+		))
+		return
+	}
+
+	//只需要在 createuser 部分标记使用就可以了，在邀请码登录部分增加次数
+	ctx, cancel := utils.WithAuthTimeout(c.Request.Context())
+	defer cancel()
+	
+	registerUser, err := h.services.User.CreateUser(ctx, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+			models.ErrorCodeInternalError,
+			"注册失败",
+			err.Error(),
+		))
+		return
+	}
+
+	// 返回成功响应
+	c.JSON(http.StatusCreated, models.SuccessResponse(registerUser))
+}*/
 

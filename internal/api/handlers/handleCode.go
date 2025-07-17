@@ -46,7 +46,7 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 
 	//这里就可以通过 userid 来返回类似于注册时的用户信息了, 无论如何第一次都应该返回，然后统一接口
 	userID := codeInfo.ID
-	token, err := h.services.User.UpdateLoginState(ctx, userID)
+	token, err := h.services.User.UpdateLoginState(ctx, userID)//更新 jwt 的
 	if err != nil{
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -55,22 +55,33 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 		))
 		return
 	}
-	//返回之前开始注册会话
-/*
-	session, err := h.services.UserSession.CreateOrGetUserSession(ctx, userID)
+	//返回之前开始检查注册会话
+
+	err = h.services.UserSession.CheckSingleSessionLimit(ctx, userID)
+	if err != nil{
+		c.JSON(http.StatusForbidden, models.ErrorResponse(
+			models.ErrorCodeForbidden,
+			"登录失败，请确保同一时间只有一个账号使用",
+			err.Error(),
+		))
+		return
+	}//检测完后开始创建会话
+
+	//那这里应该返回一个 session id ， user_session，然后保证可以根据这个查找
+	newUserSession, err:= h.services.UserSession.CreateUserSession(ctx, userID)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
-			"创建或获取用户会话失败",
+			"服务器内部错误，请稍后尝试登入",
 			err.Error(),
 		))
 		return
 	}
-*/	
-	
-	
-	c.JSON(http.StatusOK, models.SuccessResponse(models.UserRegisterResponse{
-		UserID: userID,
+	// token 中自带 user id，不用返回 user id
+	c.JSON(http.StatusOK, models.SuccessResponse(models.LoginResponse{
+		SessionID: newUserSession.SessionID,
+		StartTime: newUserSession.StartTime,
 		Token: token,
 	}))
 	

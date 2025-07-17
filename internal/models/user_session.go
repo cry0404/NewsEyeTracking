@@ -30,6 +30,12 @@ type CreateUserSessionResponse struct {
 	IsActive      bool      `json:"is_active"`
 }
 
+type LoginResponse struct {
+	SessionID     uuid.UUID `json:"session_id"`
+	StartTime     time.Time `json:"start_time"`
+	Token string `json:"token"`
+}
+
 // HeartbeatRequest 心跳请求
 type HeartbeatRequest struct {
 	SessionID uuid.UUID `json:"session_id" binding:"required"`

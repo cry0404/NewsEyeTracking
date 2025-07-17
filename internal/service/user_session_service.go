@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+
 	"time"
+
+	"database/sql"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -17,24 +19,16 @@ import (
 // UserSessionService 用户会话服务接口
 type UserSessionService interface {
 	// CreateOrGetUserSession 创建或获取用户的活跃会话
-	CreateOrGetUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error)
-	
-	// Heartbeat 处理心跳请求
-	Heartbeat(ctx context.Context, req *models.HeartbeatRequest) (*models.HeartbeatResponse, error)
-	
-	// ProcessDataUpload 处理数据上传（包含心跳分流）
-	ProcessDataUpload(ctx context.Context, req *models.DataUploadRequest) (*models.DataUploadResponse, error)
-	
-	// GetSessionStatus 获取会话状态
-	GetSessionStatus(ctx context.Context, sessionID uuid.UUID) (*models.SessionStatusResponse, error)
-	
-	// EndUserSession 结束用户会话
-	EndUserSession(ctx context.Context, sessionID uuid.UUID) error
-	
+	CreateUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error)
 	// CheckSingleSessionLimit 检查单会话限制
 	CheckSingleSessionLimit(ctx context.Context, userID uuid.UUID) error
-}
 
+	// Heartbeat 处理心跳请求
+	//Heartbeat(ctx context.Context, req *models.HeartbeatRequest) (*models.HeartbeatResponse, error)
+
+	// CleanupExpiredSessions 清理过期会话并写入数据库
+	//CleanupExpiredSessions(ctx context.Context) error
+}
 
 // userSessionService 用户会话服务实现
 type userSessionService struct {
@@ -51,79 +45,47 @@ func NewUserSessionService(queries *db.Queries, redisClient *database.RedisClien
 }
 
 const (
-	// Redis键格式，以及存储数据格式
-	//session:123e4567-e89b-12d3-a456-426614174000:987fcdeb-51d3-4c8a-9b12-345678901234
-	sessionKeyPrefix = "session:"
-	userSessionsKey  = "user_sessions:"
-	heartbeatTTL     = 1 * time.Minute // 心跳TTL为1分钟， 阅读新闻的时间应该不会太长？
+	// 新的简单结构：user_session:123e4567-e89b-12d3-a456-426614174000
+	userSessionKeyPrefix = "user_session:"
+	//activeUserKey        = "active_user" // 全局活跃用户键
+	heartbeatTTL = 1 * time.Minute // 心跳TTL为1分钟
 )
 
-// 构建会话键
-func (s *userSessionService) buildSessionKey(userID, sessionID uuid.UUID) string {
-	return fmt.Sprintf("%s%s:%s", sessionKeyPrefix, userID.String(), sessionID.String())
+func (s *userSessionService) buildUserSessionKey(userID uuid.UUID) string {
+	return fmt.Sprintf("%s%s", userSessionKeyPrefix, userID.String())
 }
-/*
-// buildUserSessionsKey 构建用户会话列表键
-func (s *userSessionService) buildUserSessionsKey(userID uuid.UUID) string {
-	return fmt.Sprintf("%s%s", userSessionsKey, userID.String())
-}*/
 
 // CreateOrGetUserSession 创建或获取用户的活跃会话
-func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error) {
-	// 首先检查单会话限制
-	if err := s.CheckSingleSessionLimit(ctx, userID); err != nil {
-		return nil, err
-	}
-	
-	// 检查用户是否已有活跃会话
-	pattern := fmt.Sprintf("%s%s:*", sessionKeyPrefix, userID.String())
-	
-	keys, err := s.redisClient.Keys(ctx, pattern)
-	if err != nil {
-		return nil, fmt.Errorf("查询用户会话失败: %v", err)
-	}
-	
-	// 检查现有会话
-	for _, key := range keys {
-		sessionData, err := s.getSessionFromRedis(ctx, key)
-		if err != nil {
-			continue
-		}
-		
-		// 检查是否是活跃会话且未过期
-		if sessionData.IsActive && time.Since(sessionData.LastHeartbeat) <= heartbeatTTL {
-			return &models.CreateUserSessionResponse{
-				SessionID:     sessionData.ID,
-				UserID:        sessionData.UserID,
-				StartTime:     sessionData.StartTime,
-				LastHeartbeat: sessionData.LastHeartbeat,
-				IsActive:      sessionData.IsActive,
-			}, nil
-		}
-	}
-	
-	// 创建新会话
+func (s *userSessionService) CreateUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error) {
+	// 创建新会话, 初始的同时写入数据库, 然后最后更新就是了，没有 endtime 的就是意外退出事故
 	now := time.Now()
 	sessionID := uuid.New()
-	
-	sessionData := models.RedisSessionData{
+
+	newSessionData := models.RedisSessionData{
 		ID:            sessionID,
 		UserID:        userID,
 		StartTime:     now,
 		LastHeartbeat: now,
 		IsActive:      true,
 	}
-	
+
 	// 存储到Redis
-	if err := s.saveSessionToRedis(ctx, sessionData); err != nil {
-		return nil, fmt.Errorf("保存会话到Redis失败: %v", err)
+	if err := s.saveSessionToRedis(ctx, newSessionData); err != nil {
+		return nil, fmt.Errorf("保存会话到Redis失败")
 	}
-	/*
-	// 同时在数据库中创建记录（用于数据关联）
-	if err := s.createUserSessionInDB(ctx, sessionData); err != nil {
-		log.Printf("创建数据库会话记录失败: %v", err)
-	}*/
-	
+
+	err := s.queries.CreateUserSession(ctx, db.CreateUserSessionParams{
+		ID:            newSessionData.ID,
+		UserID:        newSessionData.UserID,
+		StartTime:     sql.NullTime{Time: newSessionData.StartTime, Valid: true},
+		LastHeartbeat: sql.NullTime{Time: newSessionData.LastHeartbeat, Valid: true},
+		IsActive:      sql.NullBool{Bool: newSessionData.IsActive, Valid: true},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("将会话写入数据库失败: %w", err)
+	}
+
 	return &models.CreateUserSessionResponse{
 		SessionID:     sessionID,
 		UserID:        userID,
@@ -131,171 +93,42 @@ func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID 
 		LastHeartbeat: now,
 		IsActive:      true,
 	}, nil
-}
+} // 然后收到心跳包该更新 redis
+//如何检测 redis 过期，在 ttl 之前将这次用户会话写入到数据库中去
+// 但是如果又切回来该怎么算呢，是延续之前的会话，还是需要重新登录，或者说每次失去活性后就用刷新令牌刷新一下？
+/*# 在redis.conf中添加：
+notify-keyspace-events Ex */
 
-// Heartbeat 处理心跳请求
-func (s *userSessionService) Heartbeat(ctx context.Context, req *models.HeartbeatRequest) (*models.HeartbeatResponse, error) {
-	// 从Redis获取会话数据
-	sessionData, err := s.getSessionByID(ctx, req.SessionID)
-	if err != nil {
-		return &models.HeartbeatResponse{
-			SessionID: req.SessionID,
-			Status:    "invalid",
-			Message:   "会话不存在或已过期",
-		}, nil
-	}
-	
-	// 更新心跳时间
-	sessionData.LastHeartbeat = req.Timestamp
-	
-	// 保存回Redis并刷新TTL
-	if err := s.saveSessionToRedis(ctx, *sessionData); err != nil {
-		return &models.HeartbeatResponse{
-			SessionID: req.SessionID,
-			Status:    "error",
-			Message:   "更新心跳失败",
-		}, nil
-	}
-	
-	return &models.HeartbeatResponse{
-		SessionID:     req.SessionID,
-		Status:        "ok",
-		LastHeartbeat: req.Timestamp,
-	}, nil
-}
-
-// ProcessDataUpload 处理数据上传（包含心跳分流）
-func (s *userSessionService) ProcessDataUpload(ctx context.Context, req *models.DataUploadRequest) (*models.DataUploadResponse, error) {
-	response := &models.DataUploadResponse{
-		SessionID: req.SessionID,
-	}
-	
-	// 更新心跳时间
-	heartbeatReq := &models.HeartbeatRequest{
-		SessionID: req.SessionID,
-		Timestamp: req.Timestamp,
-	}
-	
-	heartbeatResp, err := s.Heartbeat(ctx, heartbeatReq)
-	if err != nil || heartbeatResp.Status != "ok" {
-		return nil, fmt.Errorf("心跳更新失败: %v", err)
-	}
-	
-	// 根据数据类型进行处理
-	switch req.DataType {
-	case "heartbeat":
-		response.ProcessedType = "heartbeat_only"
-		response.HeartbeatStatus = "ok"
-		response.Message = "心跳数据已处理"
-		
-	case "eyetracking":
-		response.ProcessedType = "eyetracking_only"
-		response.HeartbeatStatus = "updated"
-		response.DataSize = int64(len(req.CompressedData))
-		response.Message = "眼动数据已处理"
-		
-	case "mixed":
-		response.ProcessedType = "mixed"
-		response.HeartbeatStatus = "ok"
-		response.DataSize = int64(len(req.CompressedData))
-		response.Message = "混合数据已处理，心跳数据已分离"
-		
-		// TODO: 实现混合数据的分离逻辑
-		// 这里可以解析压缩数据，分离心跳数据和眼动数据
-		
-	default:
-		return nil, fmt.Errorf("不支持的数据类型: %s", req.DataType)
-	}
-	
-	return response, nil
-}
-
-// GetSessionStatus 获取会话状态
-func (s *userSessionService) GetSessionStatus(ctx context.Context, sessionID uuid.UUID) (*models.SessionStatusResponse, error) {
-	sessionData, err := s.getSessionByID(ctx, sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("获取会话状态失败: %v", err)
-	}
-	
-	// 检查是否过期
-	isExpired := time.Since(sessionData.LastHeartbeat) > heartbeatTTL
-	
-	return &models.SessionStatusResponse{
-		SessionID:        sessionData.ID,
-		IsActive:         sessionData.IsActive && !isExpired,
-		LastHeartbeat:    sessionData.LastHeartbeat,
-		IsExpired:        isExpired,
-		CanCreateReading: sessionData.IsActive && !isExpired,
-	}, nil
-}
-
-// EndUserSession 结束用户会话
-func (s *userSessionService) EndUserSession(ctx context.Context, sessionID uuid.UUID) error {
-	sessionData, err := s.getSessionByID(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("获取会话失败: %v", err)
-	}
-	
-	// 标记为非活跃
-	sessionData.IsActive = false
-	
-	// 更新Redis
-	if err := s.saveSessionToRedis(ctx, *sessionData); err != nil {
-		return fmt.Errorf("更新会话状态失败: %v", err)
-	}
-	
-	return nil
-}
-
-// CheckSingleSessionLimit 检查单会话限制
+// CheckSingleSessionLimit 在这里检查并创建应该也是可以的
 func (s *userSessionService) CheckSingleSessionLimit(ctx context.Context, userID uuid.UUID) error {
-	pattern := fmt.Sprintf("%s*", sessionKeyPrefix)
-	keys, err := s.redisClient.Keys(ctx, pattern)
+	// 构建用户会话键
+	userSessionKey := s.buildUserSessionKey(userID)
+
+	// 尝试获取当前用户的会话
+	sessionData, err := s.getSessionFromRedis(ctx, userSessionKey)
 	if err != nil {
-		return fmt.Errorf("查询活跃会话失败: %v", err)
+		if err.Error() == "会话不存在" {
+			// 如果没有存在的会话，表示可以创建
+			return nil
+		}
+		return fmt.Errorf("查询用户会话失败: %v", err)
 	}
-	
-	// 检查其他用户的活跃会话
-	for _, key := range keys {
-		sessionData, err := s.getSessionFromRedis(ctx, key)
-		if err != nil {
-			continue
-		}
-		
-		// 跳过当前用户的会话
-		if sessionData.UserID == userID {
-			continue
-		}
-		
-		// 如果找到其他用户的活跃会话，强制结束
-		if sessionData.IsActive && time.Since(sessionData.LastHeartbeat) <= heartbeatTTL {
-			sessionData.IsActive = false
-			if err := s.saveSessionToRedis(ctx, *sessionData); err != nil {
-				log.Printf("强制结束其他用户会话失败: %v", err)
-			} else {
-				log.Printf("强制结束用户 %s 的会话", sessionData.UserID)
-			}
-		}
+
+	// 如果存在活跃的会话且未过期，则返回错误，拒绝新的登录
+	if sessionData.IsActive && time.Since(sessionData.LastHeartbeat) <= heartbeatTTL {
+		return fmt.Errorf("用户已在其他位置登录")
 	}
-	
+
+	// 否则，可以创建新的会话
 	return nil
 }
 
-// getSessionByID 根据会话ID获取会话数据
-func (s *userSessionService) getSessionByID(ctx context.Context, sessionID uuid.UUID) (*models.RedisSessionData, error) {
-	// 由于我们不知道用户ID，需要搜索所有会话
-	pattern := fmt.Sprintf("%s*:%s", sessionKeyPrefix, sessionID.String())
-	keys, err := s.redisClient.Keys(ctx, pattern)
-	if err != nil {
-		return nil, err
-	}
-	
-	if len(keys) == 0 {
-		return nil, fmt.Errorf("会话不存在")
-	}
-	
-	return s.getSessionFromRedis(ctx, keys[0])
-}
+/*
+// getSessionByUserID 根据用户ID获取会话数据
+func (s *userSessionService) getSessionByUserID(ctx context.Context, userID uuid.UUID) (*models.RedisSessionData, error) {
+	userSessionKey := s.buildUserSessionKey(userID)
+	return s.getSessionFromRedis(ctx, userSessionKey)
+}*/
 
 // getSessionFromRedis 从Redis获取会话数据
 func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string) (*models.RedisSessionData, error) {
@@ -306,26 +139,27 @@ func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string
 		}
 		return nil, err
 	}
-	
+
 	var sessionData models.RedisSessionData
 	if err := json.Unmarshal([]byte(data), &sessionData); err != nil {
 		return nil, fmt.Errorf("解析会话数据失败: %v", err)
 	}
-	
+
 	return &sessionData, nil
 }
 
 // saveSessionToRedis 保存会话数据到Redis
 func (s *userSessionService) saveSessionToRedis(ctx context.Context, sessionData models.RedisSessionData) error {
-	key := s.buildSessionKey(sessionData.UserID, sessionData.ID)
-	
+	key := s.buildUserSessionKey(sessionData.UserID)
+
 	data, err := json.Marshal(sessionData)
 	if err != nil {
 		return fmt.Errorf("序列化会话数据失败: %v", err)
 	}
-	
+
 	return s.redisClient.Set(ctx, key, string(data), heartbeatTTL)
 }
+
 /*
 // createUserSessionInDB 在数据库中创建会话记录（用于数据关联）,这个部分最后做
 func (s *userSessionService) createUserSessionInDB(ctx context.Context, sessionData RedisSessionData) error {

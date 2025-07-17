@@ -46,7 +46,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			
 			// 用户会话管理（简化版）
 			//protected.POST("/session/init", h.InitUserSession)           // 整体的启动，应该整合在 code 路由中去，而且 init 中就应该判断会话状态
-			protected.POST("/session/data", h.ProcessSessionData)       // 统一数据上传接口，但这里是文章页的逻辑来
+			//protected.POST("/session/data", h.ProcessSessionData)       // 统一数据上传接口，但这里是文章页的逻辑来
 
 			
 			// 会话管理

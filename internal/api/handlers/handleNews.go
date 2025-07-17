@@ -48,7 +48,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 
 	// 默认限制为10条
 	if req.Limit == 0 || req.Limit > 20{
-		req.Limit = 10
+		req.Limit = 5
 	}
 
 	// 测试 id  ，实际应该填写对应的 userid， 先硬编码上去再说
@@ -74,7 +74,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 	用户的点击数据，包含点击了哪条新闻，以及点击换一批新闻按钮的时机。
 */
 
-	// 返回新闻列表
+
 	c.JSON(http.StatusOK, models.SuccessResponse(newsList))
 }
 
