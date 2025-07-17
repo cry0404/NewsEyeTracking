@@ -1,17 +1,17 @@
 -- 创建新的用户会话
 -- name: CreateUserSession :one
 INSERT INTO user_sessions (
-    user_id, start_time, last_heartbeat, is_active, created_date
+    user_id, start_time, last_heartbeat, is_active
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4
 ) RETURNING *;
 
--- 获取用户当天的活跃会话
--- name: GetUserActiveTodaySession :one
+-- 获取用户的活跃会话
+-- name: GetUserActiveSession :one
 SELECT * FROM user_sessions 
 WHERE user_id = $1 
-AND created_date = CURRENT_DATE 
 AND is_active = TRUE 
+AND last_heartbeat > NOW() - INTERVAL '5 minutes'
 ORDER BY start_time DESC 
 LIMIT 1;
 

@@ -6,14 +6,13 @@ import (
 	"context"
 )
 
-// SessionService 会话服务接口
+// SessionService 会话服务接口, 这里应该是针对阅读列表页和文章页的具体内容来做处理的服务层
 type SessionService interface {
 	// CreateSession 创建新的阅读会话
 	CreateSession(ctx context.Context, userID string, req *models.CreateSessionRequest) (*models.CreateSessionResponse, error)
 	// EndSession 结束阅读会话
 	EndSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error
-	// UploadCompressedData 上传压缩数据
-	UploadCompressedData(ctx context.Context, sessionID string, req *models.UploadDataRequest) (*models.UploadDataResponse, error)
+	
 }
 
 // sessionService 会话服务实现
@@ -44,11 +43,3 @@ func (s *sessionService) EndSession(ctx context.Context, sessionID string, req *
 	return nil
 }
 
-// UploadCompressedData 实现上传压缩数据逻辑
-func (s *sessionService) UploadCompressedData(ctx context.Context, sessionID string, req *models.UploadDataRequest) (*models.UploadDataResponse, error) {
-	// TODO: 实现上传压缩数据逻辑
-	// 1. 解析压缩数据
-	// 2. 上传到OSS
-	// 3. 更新会话记录
-	return nil, nil
-}

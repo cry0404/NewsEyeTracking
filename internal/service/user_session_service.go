@@ -16,7 +16,7 @@ import (
 
 // UserSessionService 用户会话服务接口
 type UserSessionService interface {
-	// CreateOrGetUserSession 创建或获取用户当天的活跃会话
+	// CreateOrGetUserSession 创建或获取用户的活跃会话
 	CreateOrGetUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error)
 	
 	// Heartbeat 处理心跳请求
@@ -42,7 +42,6 @@ type RedisSessionData struct {
 	StartTime     time.Time `json:"start_time"`
 	LastHeartbeat time.Time `json:"last_heartbeat"`
 	IsActive      bool      `json:"is_active"`
-	CreatedDate   string    `json:"created_date"` // YYYY-MM-DD格式
 }
 
 // userSessionService 用户会话服务实现
@@ -60,7 +59,8 @@ func NewUserSessionService(queries *db.Queries, redisClient *database.RedisClien
 }
 
 const (
-	// Redis键前缀
+	// Redis键格式，以及存储数据格式
+	//session:123e4567-e89b-12d3-a456-426614174000:987fcdeb-51d3-4c8a-9b12-345678901234
 	sessionKeyPrefix = "session:"
 	userSessionsKey  = "user_sessions:"
 	heartbeatTTL     = 5 * time.Minute // 心跳TTL为5分钟
@@ -70,21 +70,20 @@ const (
 func (s *userSessionService) buildSessionKey(userID, sessionID uuid.UUID) string {
 	return fmt.Sprintf("%s%s:%s", sessionKeyPrefix, userID.String(), sessionID.String())
 }
-
+/*
 // buildUserSessionsKey 构建用户会话列表键
 func (s *userSessionService) buildUserSessionsKey(userID uuid.UUID) string {
 	return fmt.Sprintf("%s%s", userSessionsKey, userID.String())
-}
+}*/
 
-// CreateOrGetUserSession 创建或获取用户当天的活跃会话
+// CreateOrGetUserSession 创建或获取用户的活跃会话
 func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID uuid.UUID) (*models.CreateUserSessionResponse, error) {
 	// 首先检查单会话限制
 	if err := s.CheckSingleSessionLimit(ctx, userID); err != nil {
 		return nil, err
 	}
 	
-	// 检查用户是否已有当天的活跃会话
-	today := time.Now().Format("2006-01-02")
+	// 检查用户是否已有活跃会话
 	pattern := fmt.Sprintf("%s%s:*", sessionKeyPrefix, userID.String())
 	
 	keys, err := s.redisClient.Keys(ctx, pattern)
@@ -99,8 +98,8 @@ func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID 
 			continue
 		}
 		
-		// 检查是否是今天的活跃会话
-		if sessionData.CreatedDate == today && sessionData.IsActive {
+		// 检查是否是活跃会话且未过期
+		if sessionData.IsActive && time.Since(sessionData.LastHeartbeat) <= heartbeatTTL {
 			return &models.CreateUserSessionResponse{
 				SessionID:     sessionData.ID,
 				UserID:        sessionData.UserID,
@@ -121,7 +120,6 @@ func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID 
 		StartTime:     now,
 		LastHeartbeat: now,
 		IsActive:      true,
-		CreatedDate:   today,
 	}
 	
 	// 存储到Redis

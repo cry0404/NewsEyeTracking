@@ -18,8 +18,9 @@ import (
 type RedisClient struct {
 	client *redis.Client
 }
-
-// NewRedisClient 创建Redis客户端
+//SetEx 设置带过期的值
+//SetNX 当键不存在设置值
+//SexXX 当键已存在设置值
 func NewRedisClient() (*RedisClient, error) {
 	// 从环境变量读取Redis配置
 	host := os.Getenv("REDIS_HOST")
@@ -43,14 +44,15 @@ func NewRedisClient() (*RedisClient, error) {
 			return nil, fmt.Errorf("invalid REDIS_DB value: %v", err)
 		}
 	}
-	
+	//按照默认设置配置
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", host, port),
+		Addr:     "localhost:6379",
 		Password: password,
 		DB:       db,
+		DisableIdentity: true, //暂时先禁用
 	})
 	
-	// 测试连接
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	
@@ -63,7 +65,7 @@ func NewRedisClient() (*RedisClient, error) {
 	return &RedisClient{client: rdb}, nil
 }
 
-// Close 关闭Redis连接
+
 func (r *RedisClient) Close() error {
 	return r.client.Close()
 }
@@ -103,6 +105,9 @@ func (r *RedisClient) Expire(ctx context.Context, key string, expiration time.Du
 func (r *RedisClient) Keys(ctx context.Context, pattern string) ([]string, error) {
 	return r.client.Keys(ctx, pattern).Result()
 }
+
+
+// postgres
 func Connect(dbURL string) (*sql.DB, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("数据库连接字符串不能为空")

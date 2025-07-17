@@ -22,13 +22,13 @@ ALTER TABLE reading_sessions ADD CONSTRAINT fk_reading_sessions_user_session
 CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX idx_user_sessions_active ON user_sessions(is_active) WHERE is_active = TRUE;
 CREATE INDEX idx_user_sessions_heartbeat ON user_sessions(last_heartbeat) WHERE is_active = TRUE;
-CREATE INDEX idx_user_sessions_date_user ON user_sessions(created_date, user_id);
+CREATE INDEX idx_user_sessions_active_heartbeat ON user_sessions(user_id, is_active, last_heartbeat);
 CREATE INDEX idx_reading_sessions_user_session ON reading_sessions(user_session_id);
 
 -- +goose Down
 -- 删除索引
 DROP INDEX IF EXISTS idx_reading_sessions_user_session;
-DROP INDEX IF EXISTS idx_user_sessions_date_user;
+DROP INDEX IF EXISTS idx_user_sessions_active_heartbeat;
 DROP INDEX IF EXISTS idx_user_sessions_heartbeat;
 DROP INDEX IF EXISTS idx_user_sessions_active;
 DROP INDEX IF EXISTS idx_user_sessions_user_id;

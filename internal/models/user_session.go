@@ -13,7 +13,6 @@ type UserSession struct {
 	StartTime     time.Time `json:"start_time" db:"start_time"`
 	LastHeartbeat time.Time `json:"last_heartbeat" db:"last_heartbeat"`
 	IsActive      bool      `json:"is_active" db:"is_active"`
-	CreatedDate   time.Time `json:"created_date" db:"created_date"`
 }
 
 // CreateUserSessionRequest 创建用户会话请求
