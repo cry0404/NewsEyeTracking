@@ -26,21 +26,27 @@ type ReadingSession struct {
 }
 
 // CreateSessionRequest 创建会话请求
-type CreateSessionRequest struct {
-	ArticleID  int         `json:"article_id" binding:"required"`
+type CreateSessionRequestForArticle struct {
+	ArticleID  string         `json:"article_id" binding:"required"`
+	StartTime  time.Time   `json:"start_time" binding:"required"`
+	DeviceInfo *DeviceInfo `json:"device_info"` //这里应该保留访问 ？
+}
+
+type CreateSessionRequestForArticles struct {
+	ArticleIDS  []string         `json:"article_id" binding:"required"`
 	StartTime  time.Time   `json:"start_time" binding:"required"`
 	DeviceInfo *DeviceInfo `json:"device_info"`
 }
-
 // CreateSessionResponse 创建会话响应， 对应的 api
 type CreateSessionResponse struct {
 	SessionID uuid.UUID `json:"session_id"`
 	UserID    uuid.UUID `json:"user_id"`
-	ArticleID int       `json:"article_id"`
+	ArticleID string       `json:"article_id"`
 	StartTime time.Time `json:"start_time"`
 }
 
-// EndSessionRequest 结束会话请求
+
+
 type EndSessionRequest struct {
 	EndTime        time.Time `json:"end_time" binding:"required"`
 	CompressedData *string   `json:"compressed_data"` // 最后一批压缩数据

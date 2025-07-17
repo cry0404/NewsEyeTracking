@@ -59,3 +59,15 @@ type NewsDetailResponse struct {
 type NewsRequest struct {
 	Limit int `form:"limit" binding:"omitempty,min=1,max=100"`
 }
+
+// UserNewsRecord 用户新闻浏览记录
+type UserNewsRecord struct {
+	StartTime time.Time `json:"start_time"`
+	NewsGUIDs []string  `json:"news_guids"`
+}
+
+// UserNewsBatchRecord 用户新闻批量记录（用于文件存储）
+type UserNewsBatchRecord struct {
+	FlushTime time.Time         `json:"flush_time"`
+	Records   []UserNewsRecord `json:"records"`
+}

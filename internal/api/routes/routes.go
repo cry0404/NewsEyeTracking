@@ -58,14 +58,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			//新闻相关
 			newsProtected := protected.Group("")
 			//newsProtected.Use(middleware.newsValid()) //这里实现的思路是把对应的 guid 区分开，检测天数，以免看太过时的新闻
-			/*
-				// 会话管理
-			//protected.POST("/sessions", h.CreateSession)
-			//protected.PATCH("/sessions/:session_id", h.EndSession)
-
-			//压缩数据上报
-			//protected.POST("/sessions/:session_id/data", h.UploadCompressedData)
-			*/
+			
 			{
 			
 				newsProtected.GET("/news/", h.GetNews)

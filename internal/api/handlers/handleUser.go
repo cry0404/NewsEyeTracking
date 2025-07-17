@@ -64,7 +64,7 @@ func (h *Handlers) GetProfile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
 			"获取用户信息失败",
-			err.Error(),
+			"用户尚未填写过信息",
 		))
 		return
 	}

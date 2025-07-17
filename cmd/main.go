@@ -50,6 +50,7 @@ func main() {
 	// 启动服务器
 	port := os.Getenv("PORT")
 	if port == "" {
+		//port = "8080"
 		port = "8080"
 	}
 

@@ -126,11 +126,11 @@ func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID 
 	if err := s.saveSessionToRedis(ctx, sessionData); err != nil {
 		return nil, fmt.Errorf("保存会话到Redis失败: %v", err)
 	}
-	
+	/*
 	// 同时在数据库中创建记录（用于数据关联）
 	if err := s.createUserSessionInDB(ctx, sessionData); err != nil {
 		log.Printf("创建数据库会话记录失败: %v", err)
-	}
+	}*/
 	
 	return &models.CreateUserSessionResponse{
 		SessionID:     sessionID,
@@ -335,10 +335,10 @@ func (s *userSessionService) saveSessionToRedis(ctx context.Context, sessionData
 	
 	return s.redisClient.Set(ctx, key, string(data), heartbeatTTL)
 }
-
-// createUserSessionInDB 在数据库中创建会话记录（用于数据关联）
+/*
+// createUserSessionInDB 在数据库中创建会话记录（用于数据关联）,这个部分最后做
 func (s *userSessionService) createUserSessionInDB(ctx context.Context, sessionData RedisSessionData) error {
 	// 这里需要等待数据库迁移完成后实现
 	// 暂时返回nil
 	return nil
-}
+}*/
