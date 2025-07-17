@@ -24,7 +24,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 		return
 	}
 
-	// 类型断言：将 interface{} 转换为 string
+	
 	userID, ok := userIDRaw.(string)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
@@ -48,15 +48,16 @@ func (h *Handlers) GetNews(c *gin.Context) {
 
 	// 默认限制为10条
 	if req.Limit == 0 || req.Limit > 20{
-		req.Limit = 10
+		req.Limit = 5
 	}
 
 	// 测试 id  ，实际应该填写对应的 userid， 先硬编码上去再说
-	// 为数据库查询创建带超时的 context
+	// 为数据库查询创建带超时的 context， 请求返回之前应该创建一个新的用户会话
 	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
 	defer cancel()
 	
 	newsList, err := h.services.News.GetNews(ctx, userID, req.Limit)
+	//统计 guid 并保存,直接记录保存也行？
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
@@ -65,8 +66,15 @@ func (h *Handlers) GetNews(c *gin.Context) {
 		))
 		return
 	}
+	//能成功返回新闻列表了，就可以加入会话请求了
+	//var sessionreq models.CreateSessionRequest
+	/*用户行为记录
+	每次刷新出来的新闻 ID 和顺序，当前屏幕分辨率
+	用户在列表页的眼动浏览信息，当浏览到新闻标题和简述时要求给出分词实时数据，浏览其他内容需要给出对应的组件数据。所有数据需要标注是否开启了注视反馈。
+	用户的点击数据，包含点击了哪条新闻，以及点击换一批新闻按钮的时机。
+*/
 
-	// 返回新闻列表
+
 	c.JSON(http.StatusOK, models.SuccessResponse(newsList))
 }
 

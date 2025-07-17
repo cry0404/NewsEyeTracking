@@ -13,8 +13,7 @@ import (
 type UploadService interface {
 	// StartMonitoring 启动文件监控和自动上传
 	StartMonitoring(ctx context.Context) error
-	// UploadFiles 手动触发文件上传
-	//UploadFiles(ctx context.Context) error
+	
 	// GetUploadStats 获取上传统计信息
 	GetUploadStats(ctx context.Context) (map[string]interface{}, error)
 	// BackupData 备份数据

@@ -50,32 +50,3 @@ func ErrorResponse(code, message, details string) *APIResponse {
 	}
 }
 
-/*
-// PaginationInfo 分页信息
-type PaginationInfo struct {
-	Page       int   `json:"page"`
-	PageSize   int   `json:"page_size"`
-	Total      int64 `json:"total"`
-	TotalPages int   `json:"total_pages"`
-}
-
-// PaginatedResponse 分页响应结构
-type PaginatedResponse struct {
-	Items      interface{}     `json:"items"`
-	Pagination *PaginationInfo `json:"pagination"`
-}
-*/
-
-// HealthResponse 健康检查响应
-type HealthResponse struct {
-	Status    string `json:"status"`
-	Timestamp string `json:"timestamp"`
-	Version   string `json:"version"`
-}
-
-// VersionResponse 版本信息响应
-type VersionResponse struct {
-	Version   string `json:"version"`
-	BuildTime string `json:"build_time"`
-	GitCommit string `json:"git_commit"`
-}

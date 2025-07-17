@@ -1,17 +1,16 @@
 -- 获取邀请码ID 和 email（注册时使用）
--- name: GetIdAndEmailByCode :one
-SELECT id,email FROM invite_codes WHERE code = $1;
+-- name: GetIdAndEmailByCodeID :one
+SELECT id,email FROM invite_codes WHERE id = $1;
 
 
 -- 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
 -- name: FindCodeAndIncrementCount :one
+-- 如果 code 存在，就增加 count，无论 is_used 是什么
 UPDATE invite_codes
-SET count = CASE
-                WHEN is_used = TRUE THEN COALESCE(count, 0) + 1
-                ELSE count -- 如果 is_used 为 FALSE，则 count 保持不变
-            END
+SET count = COALESCE(count, 0) + 1
 WHERE code = $1
 RETURNING id, code, is_used, count;
+
 
 
 -- 只查询邀请码信息（不增加计数，用于纯查询场景）

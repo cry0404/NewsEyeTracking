@@ -19,7 +19,10 @@ type Querier interface {
 	// 用户 CRUD 操作
 	// 用户 ID 来自邀请码 ID，建立一对一关系
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// 创建新的用户会话
+	CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error
 	// 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
+	// 如果 code 存在，就增加 count，无论 is_used 是什么
 	FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error)
 	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
 	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
@@ -28,7 +31,7 @@ type Querier interface {
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
 	// 获取邀请码ID 和 email（注册时使用）
-	GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error)
+	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
 	// 会话查询

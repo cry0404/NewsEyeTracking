@@ -55,7 +55,19 @@ type NewsDetailResponse struct {
 	AdditionalInfo *AdditionalInfo `json:"additional_info,omitempty"` // 根据A/B测试决定是否包含
 }
 
-// NewsRequest 新闻列表请求参数
+// NewsRequest 新闻列表请求参数， 请求参数的设置根据 form 来做绑定， 可以有不同的参数来做解析
 type NewsRequest struct {
 	Limit int `form:"limit" binding:"omitempty,min=1,max=100"`
+}
+
+// UserNewsRecord 用户新闻浏览记录
+type UserNewsRecord struct {
+	StartTime time.Time `json:"start_time"`
+	NewsGUIDs []string  `json:"news_guids"`
+}
+
+// UserNewsBatchRecord 用户新闻批量记录（用于文件存储）
+type UserNewsBatchRecord struct {
+	FlushTime time.Time         `json:"flush_time"`
+	Records   []UserNewsRecord `json:"records"`
 }

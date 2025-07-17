@@ -56,6 +56,7 @@ type ReadingSession struct {
 	EndTime           sql.NullTime          `json:"end_time"`
 	DeviceInfo        pqtype.NullRawMessage `json:"device_info"`
 	SessionDurationMs sql.NullInt64         `json:"session_duration_ms"`
+	UserSessionID     uuid.NullUUID         `json:"user_session_id"`
 }
 
 type User struct {
@@ -73,4 +74,14 @@ type User struct {
 	VisionStatus        sql.NullString `json:"vision_status"`
 	IsVisionCorrected   sql.NullBool   `json:"is_vision_corrected"`
 	CreatedAt           sql.NullTime   `json:"created_at"`
+}
+
+type UserSession struct {
+	ID            uuid.UUID    `json:"id"`
+	UserID        uuid.UUID    `json:"user_id"`
+	StartTime     sql.NullTime `json:"start_time"`
+	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
+	IsActive      sql.NullBool `json:"is_active"`
+	CreatedDate   sql.NullTime `json:"created_date"`
+	EndTime       sql.NullTime `json:"end_time"`
 }

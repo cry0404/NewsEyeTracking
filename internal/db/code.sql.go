@@ -14,10 +14,7 @@ import (
 
 const findCodeAndIncrementCount = `-- name: FindCodeAndIncrementCount :one
 UPDATE invite_codes
-SET count = CASE
-                WHEN is_used = TRUE THEN COALESCE(count, 0) + 1
-                ELSE count -- 如果 is_used 为 FALSE，则 count 保持不变
-            END
+SET count = COALESCE(count, 0) + 1
 WHERE code = $1
 RETURNING id, code, is_used, count
 `
@@ -30,6 +27,7 @@ type FindCodeAndIncrementCountRow struct {
 }
 
 // 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
+// 如果 code 存在，就增加 count，无论 is_used 是什么
 func (q *Queries) FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error) {
 	row := q.db.QueryRowContext(ctx, findCodeAndIncrementCount, code)
 	var i FindCodeAndIncrementCountRow
@@ -61,19 +59,19 @@ func (q *Queries) GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
-const getIdAndEmailByCode = `-- name: GetIdAndEmailByCode :one
-SELECT id,email FROM invite_codes WHERE code = $1
+const getIdAndEmailByCodeID = `-- name: GetIdAndEmailByCodeID :one
+SELECT id,email FROM invite_codes WHERE id = $1
 `
 
-type GetIdAndEmailByCodeRow struct {
+type GetIdAndEmailByCodeIDRow struct {
 	ID    uuid.UUID `json:"id"`
 	Email string    `json:"email"`
 }
 
 // 获取邀请码ID 和 email（注册时使用）
-func (q *Queries) GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, getIdAndEmailByCode, code)
-	var i GetIdAndEmailByCodeRow
+func (q *Queries) GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getIdAndEmailByCodeID, id)
+	var i GetIdAndEmailByCodeIDRow
 	err := row.Scan(&i.ID, &i.Email)
 	return i, err
 }

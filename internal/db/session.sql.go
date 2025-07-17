@@ -19,7 +19,7 @@ INSERT INTO reading_sessions (
     id, article_id, start_time, device_info, user_id
 )VALUES(
     uuid_generate_v4(), $1, $2, $3, $4
-) RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms
+) RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms, user_session_id
 `
 
 type CreateSessionParams struct {
@@ -49,12 +49,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (R
 		&i.EndTime,
 		&i.DeviceInfo,
 		&i.SessionDurationMs,
+		&i.UserSessionID,
 	)
 	return i, err
 }
 
 const getSessionByID = `-- name: GetSessionByID :one
-SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms FROM reading_sessions WHERE id = $1
+SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms, user_session_id FROM reading_sessions WHERE id = $1
 `
 
 // 会话查询
@@ -69,12 +70,13 @@ func (q *Queries) GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSess
 		&i.EndTime,
 		&i.DeviceInfo,
 		&i.SessionDurationMs,
+		&i.UserSessionID,
 	)
 	return i, err
 }
 
 const getUserActiveSessions = `-- name: GetUserActiveSessions :many
-SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL
+SELECT id, user_id, article_id, start_time, end_time, device_info, session_duration_ms, user_session_id FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL
 `
 
 func (q *Queries) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error) {
@@ -94,6 +96,7 @@ func (q *Queries) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) (
 			&i.EndTime,
 			&i.DeviceInfo,
 			&i.SessionDurationMs,
+			&i.UserSessionID,
 		); err != nil {
 			return nil, err
 		}
@@ -159,7 +162,7 @@ const updateSessionEndTime = `-- name: UpdateSessionEndTime :one
 UPDATE reading_sessions SET
     end_time = $2,
     session_duration_ms = EXTRACT(EPOCH FROM ($2 - start_time)) * 1000
-WHERE id = $1 RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms
+WHERE id = $1 RETURNING id, user_id, article_id, start_time, end_time, device_info, session_duration_ms, user_session_id
 `
 
 type UpdateSessionEndTimeParams struct {
@@ -179,6 +182,7 @@ func (q *Queries) UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEnd
 		&i.EndTime,
 		&i.DeviceInfo,
 		&i.SessionDurationMs,
+		&i.UserSessionID,
 	)
 	return i, err
 }

@@ -18,10 +18,9 @@ type InviteCode struct {
 	Count   			int64     `json:"count" db:"count"`
 }
 
-// User 表这里应该需要绑定 bind ，应该要做一些 require， 对于前端发送过来的字段
+//现在不需要做任何限定了
 type User struct {
 	ID             uuid.UUID  `json:"id" db:"id"`
-	Email          string     `json:"email" db:"email"`
 	Gender         *string    `json:"gender" db:"gender"`
 	Age            *int       `json:"age" db:"age"`
 	DateOfBirth    *time.Time `json:"date_of_birth" db:"date_of_birth"`
@@ -38,8 +37,7 @@ type User struct {
 	VisionStatus      *string `json:"vision_status" db:"vision_status"`
 	IsVisionCorrected bool    `json:"is_vision_corrected" db:"is_vision_corrected"`
 
-	// 实验相关 - 注意：User.ID 就是来自 invite_codes.id，所以不需要单独的 InviteCodeID
-	// 类似于 feed 和 feedid 之间的关系
+
 	InviteCode *InviteCode `json:"invite_code,omitempty"` // 关联的邀请码信息
 
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
@@ -52,7 +50,7 @@ type ExperimentConfig struct {
 }
 
 
-type UserRegisterRequest struct {
+/*type UserRegisterRequest struct {
 	// 必填字段
 	InviteCode string `json:"invite_code" binding:"required,min=1,max=50" validate:"required"`
 	//注册时没有 email 字段 Email      string `json:"email" binding:"required,email,max=255" validate:"required,email"`
@@ -73,10 +71,10 @@ type UserRegisterRequest struct {
 	IsColorblind      *bool   `json:"is_colorblind" binding:"required" validate:"required"`
 	VisionStatus      *string `json:"vision_status" binding:"required,oneof='远视' '近视' '无'" validate:"required,oneof='远视' '近视' '无'"`
 	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"required" validate:"required"`
-}
+}*/
 
 
-type UserUpdateRequest struct {
+type UserRequest struct {
 	// 基本信息
 	// Email          *string `json:"email" binding:"omitempty,email,max=255" validate:"omitempty,email"`
 	Gender         *string `json:"gender" binding:"omitempty,oneof=男 女" validate:"omitempty,oneof=男 女"`
@@ -95,12 +93,12 @@ type UserUpdateRequest struct {
 	VisionStatus      *string `json:"vision_status" binding:"omitempty,oneof='远视' '近视' '无'" validate:"omitempty,oneof='远视' '近视' '无'"`
 	IsVisionCorrected *bool   `json:"is_vision_corrected" binding:"omitempty" validate:"omitempty"`
 }
-
+/*
 // UserRegisterResponse 用户注册响应
 type UserRegisterResponse struct {
 	UserID uuid.UUID `json:"user_id"`
 	Token  string    `json:"token"`
-}
+}*/
 
 // UserProfileResponse 用户信息响应
 type UserProfileResponse struct {
@@ -168,9 +166,9 @@ func ValidateReadingHours(hours int) bool {
 }
 
 // RegisterRequest 用户注册请求的别名，保持向后兼容
-type RegisterRequest = UserRegisterRequest
+type RegisterRequest = UserRequest
 
-// ABTestConfig A/B测试配置的别名，保持向后兼容
+
 type ABTestConfig = ExperimentConfig
 
 // JWTClaims JWT令牌声明

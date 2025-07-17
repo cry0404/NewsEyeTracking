@@ -6,3 +6,6 @@ docs/
 models/example.go
 test/
 .gitignore
+*.http
+data/
+data/user

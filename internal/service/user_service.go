@@ -15,18 +15,16 @@ import (
 	"github.com/joho/godotenv"
 )
 //这里还缺失了检验邀请码这一逻辑，邀请码应该使用 hash 值来跟数据库中的做对比
-// UserService 用户服务接口, crud ，这里需不需要 d 呢
+// UserService 用户服务接口
 type UserService interface {
-	// CreateUser 创建新用户（包含JWT生成）
-	CreateUser(ctx context.Context, req *models.RegisterRequest) (*models.UserRegisterResponse, error)
 	// GetUserByID 根据ID获取用户信息
 	GetUserByID(ctx context.Context, userID string) (*models.User, error)
-	// UpdateUser 更新用户信息
-	UpdateUser(ctx context.Context, userID string, req *models.UserUpdateRequest) (*models.User, error)
+	// UpdateUser 统一的用户创建/更新接口，支持邀请码创建和用户ID更新
+	UpdateUser(ctx context.Context, userID string, req *models.UserRequest) (*models.User, error)
 	// GetUserABTestConfig 获取用户A/B测试配置
 	GetUserABTestConfig(ctx context.Context, inviteCodeID uuid.UUID) (*models.ABTestConfig, error)
-	// UpdateLoginCount 更新登录状态
-	 UpdateLoginState(ctx context.Context, userID uuid.UUID) (string, error)
+	// UpdateLoginState 更新登录状态
+	UpdateLoginState(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 // userService 用户服务实现
@@ -38,10 +36,10 @@ type userService struct {
 func NewUserService(queries *db.Queries) UserService {
 	return &userService{queries: queries}
 }
-
+/*
 // CreateUser 实现用户创建逻辑（包含JWT生成）
-func (s *userService) CreateUser(ctx context.Context, req *models.RegisterRequest) (*models.UserRegisterResponse, error) {
-
+func (s *userService) CreateUser(ctx context.Context, req *models.UserRequest) (*models.UserRegisterResponse, error) {
+//现在创建不需要 invitecode 了，随便更新
 	UserInfo, err := s.queries.GetIdAndEmailByCode(ctx, req.InviteCode)
 	if err != nil {
 		return nil, fmt.Errorf("邀请码无效")
@@ -111,7 +109,7 @@ func (s *userService) CreateUser(ctx context.Context, req *models.RegisterReques
 		UserID: User.ID,
 		Token:  token,
 	}, nil
-}
+}*/
 
 
 // GetUserByID 根据ID获取用户信息
@@ -128,7 +126,7 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*models.U
 	// 转换 db.User 到 models.User, 业务层逻辑和数据库逻辑，保证前端验证的非空性了
 	return &models.User{
 		ID:                  User.ID,
-		Email:               User.Email,
+		//Email:               User.Email,
 		Gender:              nullStringToPtr(User.Gender),
 		Age:                 nullInt32ToPtr(User.Age),
 		DateOfBirth:         nullTimeToPtr(User.DateOfBirth),
@@ -144,18 +142,12 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*models.U
 	}, nil
 }
 
-// UpdateUser 更新用户信息， 用于 auth/profile 页，针对
-func (s *userService) UpdateUser(ctx context.Context, userID string, req *models.UserUpdateRequest) (*models.User, error) {
+// UpdateUser 统一的用户更新接口，所有字段都不强制要求
+func (s *userService) UpdateUser(ctx context.Context, userID string, req *models.UserRequest) (*models.User, error) {
 	// 解析用户ID
 	newUserID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("用户ID解析失败，请确认用户ID格式: %w", err)
-	}
-
-	// 获取当前用户信息
-	currentUser, err := s.queries.GetUserByID(ctx, newUserID)
-	if err != nil {
-		return nil, fmt.Errorf("获取用户信息失败: %w", err)
 	}
 
 	// 处理日期格式转换
@@ -168,32 +160,62 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *models
 		dateOfBirth = &parsedDate
 	}
 
-	// 构建更新参数，对于nil值保持原有值
+	// 先尝试更新用户
 	updateParams := db.UpdateUserParams{
 		ID:                  newUserID,
-		Gender:              buildNullString(req.Gender, currentUser.Gender),
-		Age:                 buildNullInt32(req.Age, currentUser.Age),
-		DateOfBirth:         buildNullTime(dateOfBirth, currentUser.DateOfBirth),
-		EducationLevel:      buildNullString(req.EducationLevel, currentUser.EducationLevel),
-		Residence:           buildNullString(req.Residence, currentUser.Residence),
-		WeeklyReadingHours:  buildNullInt32(req.WeeklyReadingHours, currentUser.WeeklyReadingHours),
-		PrimaryNewsPlatform: buildNullString(req.PrimaryNewsPlatform, currentUser.PrimaryNewsPlatform),
-		IsActiveSearcher:    buildNullBool(req.IsActiveSearcher, currentUser.IsActiveSearcher),
-		IsColorblind:        buildNullBool(req.IsColorblind, currentUser.IsColorblind),
-		VisionStatus:        buildNullString(req.VisionStatus, currentUser.VisionStatus),
-		IsVisionCorrected:   buildNullBool(req.IsVisionCorrected, currentUser.IsVisionCorrected),
+		Gender:              buildNullStringFromPtr(req.Gender),
+		Age:                 buildNullInt32FromPtr(req.Age),
+		DateOfBirth:         buildNullTimeFromPtr(dateOfBirth),
+		EducationLevel:      buildNullStringFromPtr(req.EducationLevel),
+		Residence:           buildNullStringFromPtr(req.Residence),
+		WeeklyReadingHours:  buildNullInt32FromPtr(req.WeeklyReadingHours),
+		PrimaryNewsPlatform: buildNullStringFromPtr(req.PrimaryNewsPlatform),
+		IsActiveSearcher:    buildNullBoolFromPtr(req.IsActiveSearcher),
+		IsColorblind:        buildNullBoolFromPtr(req.IsColorblind),
+		VisionStatus:        buildNullStringFromPtr(req.VisionStatus),
+		IsVisionCorrected:   buildNullBoolFromPtr(req.IsVisionCorrected),
 	}
 
-	// 执行更新
 	updatedUser, err := s.queries.UpdateUser(ctx, updateParams)
 	if err != nil {
-		return nil, fmt.Errorf("更新用户信息失败: %w", err)
+		// 如果用户不存在，尝试创建用户
+		if err == sql.ErrNoRows {
+			// 需要从邀请码获取 email
+			inviteInfo, inviteErr := s.queries.GetIdAndEmailByCodeID(ctx, newUserID)
+			if inviteErr != nil {
+				return nil, fmt.Errorf("用户不存在且无法通过邀请码创建: %w", inviteErr)
+			}
+			
+			// 创建用户
+			createParams := db.CreateUserParams{
+				ID:                  newUserID,
+				Email:               inviteInfo.Email,
+				Gender:              buildNullStringFromPtr(req.Gender),
+				Age:                 buildNullInt32FromPtr(req.Age),
+				DateOfBirth:         buildNullTimeFromPtr(dateOfBirth),
+				EducationLevel:      buildNullStringFromPtr(req.EducationLevel),
+				Residence:           buildNullStringFromPtr(req.Residence),
+				WeeklyReadingHours:  buildNullInt32FromPtr(req.WeeklyReadingHours),
+				PrimaryNewsPlatform: buildNullStringFromPtr(req.PrimaryNewsPlatform),
+				IsActiveSearcher:    buildNullBoolFromPtr(req.IsActiveSearcher),
+				IsColorblind:        buildNullBoolFromPtr(req.IsColorblind),
+				VisionStatus:        buildNullStringFromPtr(req.VisionStatus),
+				IsVisionCorrected:   buildNullBoolFromPtr(req.IsVisionCorrected),
+			}
+			
+			updatedUser, err = s.queries.CreateUser(ctx, createParams)
+			if err != nil {
+				return nil, fmt.Errorf("创建用户失败: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("更新用户信息失败: %w", err)
+		}
 	}
 
 	// 转换为模型对象
 	return &models.User{
 		ID:                  updatedUser.ID,
-		Email:               updatedUser.Email,
+		//Email:               updatedUser.Email,
 		Gender:              nullStringToPtr(updatedUser.Gender),
 		Age:                 nullInt32ToPtr(updatedUser.Age),
 		DateOfBirth:         nullTimeToPtr(updatedUser.DateOfBirth),
@@ -274,39 +296,36 @@ func nullTimeToPtr(nt sql.NullTime) *time.Time {
 	return nil
 }
 
-// 构建更新用的 sql.NullString，如果新值为 nil 则保持原值
-func buildNullString(newValue *string, currentValue sql.NullString) sql.NullString {
-	if newValue != nil {
-		return sql.NullString{String: *newValue, Valid: true}
+// 新的辅助函数：从指针直接构建 sql.Null 类型
+func buildNullStringFromPtr(value *string) sql.NullString {
+	if value != nil {
+		return sql.NullString{String: *value, Valid: true}
 	}
-	return currentValue
+	return sql.NullString{Valid: false}
 }
 
-// 构建更新用的 sql.NullInt32，如果新值为 nil 则保持原值
-func buildNullInt32(newValue *int, currentValue sql.NullInt32) sql.NullInt32 {
-	if newValue != nil {
-		return sql.NullInt32{Int32: int32(*newValue), Valid: true}
+func buildNullInt32FromPtr(value *int) sql.NullInt32 {
+	if value != nil {
+		return sql.NullInt32{Int32: int32(*value), Valid: true}
 	}
-	return currentValue
+	return sql.NullInt32{Valid: false}
 }
 
-// 构建更新用的 sql.NullTime，如果新值为 nil 则保持原值
-func buildNullTime(newValue *time.Time, currentValue sql.NullTime) sql.NullTime {
-	if newValue != nil {
-		return sql.NullTime{Time: *newValue, Valid: true}
+func buildNullTimeFromPtr(value *time.Time) sql.NullTime {
+	if value != nil {
+		return sql.NullTime{Time: *value, Valid: true}
 	}
-	return currentValue
+	return sql.NullTime{Valid: false}
 }
 
-// 构建更新用的 sql.NullBool，如果新值为 nil 则保持原值
-func buildNullBool(newValue *bool, currentValue sql.NullBool) sql.NullBool {
-	if newValue != nil {
-		return sql.NullBool{Bool: *newValue, Valid: true}
+func buildNullBoolFromPtr(value *bool) sql.NullBool {
+	if value != nil {
+		return sql.NullBool{Bool: *value, Valid: true}
 	}
-	return currentValue
+	return sql.NullBool{Valid: false}
 }
 
-// 验证所有必填字段
+/*
 func validateRequiredFields(req *models.RegisterRequest) error {
 	if req.Gender == nil {
 		return fmt.Errorf("性别字段不能为空")
@@ -343,3 +362,5 @@ func validateRequiredFields(req *models.RegisterRequest) error {
 	}
 	return nil
 }
+*/ 
+//都可以为空，不需要强制验证了

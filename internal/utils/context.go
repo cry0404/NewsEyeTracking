@@ -36,6 +36,11 @@ func WithComplexQueryTimeout(parent context.Context) (context.Context, context.C
 	return context.WithTimeout(parent, ComplexQueryTimeout)
 }
 
+// WithReadTimeout 为读操作创建带超时的 context
+func WithReadTimeout(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, DatabaseQueryTimeout)
+}
+
 // WithWriteTimeout 为写操作创建带超时的 context
 func WithWriteTimeout(parent context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, WriteOperationTimeout)
