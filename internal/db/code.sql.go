@@ -59,19 +59,19 @@ func (q *Queries) GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
-const getIdAndEmailByCode = `-- name: GetIdAndEmailByCode :one
-SELECT id,email FROM invite_codes WHERE code = $1
+const getIdAndEmailByCodeID = `-- name: GetIdAndEmailByCodeID :one
+SELECT id,email FROM invite_codes WHERE id = $1
 `
 
-type GetIdAndEmailByCodeRow struct {
+type GetIdAndEmailByCodeIDRow struct {
 	ID    uuid.UUID `json:"id"`
 	Email string    `json:"email"`
 }
 
 // 获取邀请码ID 和 email（注册时使用）
-func (q *Queries) GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, getIdAndEmailByCode, code)
-	var i GetIdAndEmailByCodeRow
+func (q *Queries) GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getIdAndEmailByCodeID, id)
+	var i GetIdAndEmailByCodeIDRow
 	err := row.Scan(&i.ID, &i.Email)
 	return i, err
 }

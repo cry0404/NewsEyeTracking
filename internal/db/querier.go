@@ -39,7 +39,7 @@ type Querier interface {
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
 	// 获取邀请码ID 和 email（注册时使用）
-	GetIdAndEmailByCode(ctx context.Context, code string) (GetIdAndEmailByCodeRow, error)
+	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
 	// 会话查询
@@ -65,6 +65,8 @@ type Querier interface {
 	// 更新会话心跳时间
 	UpdateSessionHeartbeat(ctx context.Context, arg UpdateSessionHeartbeatParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// 统一的用户创建/更新接口，支持 UPSERT 操作
+	UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

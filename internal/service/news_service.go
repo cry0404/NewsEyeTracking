@@ -169,6 +169,7 @@ func (s *newsService) flushCacheRoutine() {
 }
 
 // flushCacheToFile 将缓存中的数据批量写入文件， 备选是直接写入，需要测试
+// 这里的思路应该是可以将所有的前端发来的信息都存入缓存中，我现在需要处理的是心跳包会话问题
 func (s *newsService) flushCacheToFile() {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()

@@ -22,6 +22,8 @@ UPDATE users SET
     is_colorblind = $10, vision_status = $11, is_vision_corrected = $12
 WHERE id = $1 RETURNING *;
 
+
+
 -- A/B 测试相关查询
 -- name: GetUserWithInviteCode :one
 SELECT u.*, ic.has_recommend, ic.has_more_information 

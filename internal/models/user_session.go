@@ -70,3 +70,6 @@ type SessionStatusResponse struct {
 	IsExpired       bool      `json:"is_expired"`
 	CanCreateReading bool     `json:"can_create_reading"` // 是否可以创建阅读会话
 }
+
+// RedisSessionData Redis中存储的会话数据，使用UserSession的结构
+type RedisSessionData UserSession

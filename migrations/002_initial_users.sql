@@ -42,7 +42,7 @@ CREATE TABLE users (
 
 -- 创建阅读会话表（使用UUID作为主键）
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
--- reding 就代表一个会话，包括阅读主页，以及阅读文章，
+-- reading_sessions 就代表一个会话，包括阅读主页，以及阅读文章，
 -- 
 CREATE TABLE reading_sessions (
     id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

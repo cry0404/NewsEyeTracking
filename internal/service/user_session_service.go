@@ -35,14 +35,6 @@ type UserSessionService interface {
 	CheckSingleSessionLimit(ctx context.Context, userID uuid.UUID) error
 }
 
-// RedisSessionData Redis中存储的会话数据
-type RedisSessionData struct {
-	ID            uuid.UUID `json:"id"`
-	UserID        uuid.UUID `json:"user_id"`
-	StartTime     time.Time `json:"start_time"`
-	LastHeartbeat time.Time `json:"last_heartbeat"`
-	IsActive      bool      `json:"is_active"`
-}
 
 // userSessionService 用户会话服务实现
 type userSessionService struct {
@@ -63,10 +55,10 @@ const (
 	//session:123e4567-e89b-12d3-a456-426614174000:987fcdeb-51d3-4c8a-9b12-345678901234
 	sessionKeyPrefix = "session:"
 	userSessionsKey  = "user_sessions:"
-	heartbeatTTL     = 5 * time.Minute // 心跳TTL为5分钟
+	heartbeatTTL     = 1 * time.Minute // 心跳TTL为1分钟， 阅读新闻的时间应该不会太长？
 )
 
-// buildSessionKey 构建会话Redis键
+// 构建会话键
 func (s *userSessionService) buildSessionKey(userID, sessionID uuid.UUID) string {
 	return fmt.Sprintf("%s%s:%s", sessionKeyPrefix, userID.String(), sessionID.String())
 }
@@ -114,7 +106,7 @@ func (s *userSessionService) CreateOrGetUserSession(ctx context.Context, userID 
 	now := time.Now()
 	sessionID := uuid.New()
 	
-	sessionData := RedisSessionData{
+	sessionData := models.RedisSessionData{
 		ID:            sessionID,
 		UserID:        userID,
 		StartTime:     now,
@@ -257,7 +249,6 @@ func (s *userSessionService) EndUserSession(ctx context.Context, sessionID uuid.
 
 // CheckSingleSessionLimit 检查单会话限制
 func (s *userSessionService) CheckSingleSessionLimit(ctx context.Context, userID uuid.UUID) error {
-	// 查找所有活跃会话
 	pattern := fmt.Sprintf("%s*", sessionKeyPrefix)
 	keys, err := s.redisClient.Keys(ctx, pattern)
 	if err != nil {
@@ -291,7 +282,7 @@ func (s *userSessionService) CheckSingleSessionLimit(ctx context.Context, userID
 }
 
 // getSessionByID 根据会话ID获取会话数据
-func (s *userSessionService) getSessionByID(ctx context.Context, sessionID uuid.UUID) (*RedisSessionData, error) {
+func (s *userSessionService) getSessionByID(ctx context.Context, sessionID uuid.UUID) (*models.RedisSessionData, error) {
 	// 由于我们不知道用户ID，需要搜索所有会话
 	pattern := fmt.Sprintf("%s*:%s", sessionKeyPrefix, sessionID.String())
 	keys, err := s.redisClient.Keys(ctx, pattern)
@@ -307,7 +298,7 @@ func (s *userSessionService) getSessionByID(ctx context.Context, sessionID uuid.
 }
 
 // getSessionFromRedis 从Redis获取会话数据
-func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string) (*RedisSessionData, error) {
+func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string) (*models.RedisSessionData, error) {
 	data, err := s.redisClient.Get(ctx, key)
 	if err != nil {
 		if err == redis.Nil {
@@ -316,7 +307,7 @@ func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string
 		return nil, err
 	}
 	
-	var sessionData RedisSessionData
+	var sessionData models.RedisSessionData
 	if err := json.Unmarshal([]byte(data), &sessionData); err != nil {
 		return nil, fmt.Errorf("解析会话数据失败: %v", err)
 	}
@@ -325,7 +316,7 @@ func (s *userSessionService) getSessionFromRedis(ctx context.Context, key string
 }
 
 // saveSessionToRedis 保存会话数据到Redis
-func (s *userSessionService) saveSessionToRedis(ctx context.Context, sessionData RedisSessionData) error {
+func (s *userSessionService) saveSessionToRedis(ctx context.Context, sessionData models.RedisSessionData) error {
 	key := s.buildSessionKey(sessionData.UserID, sessionData.ID)
 	
 	data, err := json.Marshal(sessionData)

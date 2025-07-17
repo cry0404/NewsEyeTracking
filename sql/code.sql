@@ -1,6 +1,6 @@
 -- 获取邀请码ID 和 email（注册时使用）
--- name: GetIdAndEmailByCode :one
-SELECT id,email FROM invite_codes WHERE code = $1;
+-- name: GetIdAndEmailByCodeID :one
+SELECT id,email FROM invite_codes WHERE id = $1;
 
 
 -- 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
