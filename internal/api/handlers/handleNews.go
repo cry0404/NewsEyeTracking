@@ -61,7 +61,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
 	defer cancel()
 	// 这里是返回的新闻，也许 gjc 那边返回的就是 guid 呢
-	newsList, err := h.services.News.GetNews(ctx, userID, req.Limit)
+	newsList, err := h.services.News.GetNews(ctx, userID, req.Limit, h.AddToNewsCache)
 	//统计 guid 并保存,直接记录保存也行？
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
