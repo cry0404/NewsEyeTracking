@@ -131,7 +131,20 @@ func (s *sessionService) CreateSessionForFeed(ctx context.Context, userID string
 
 // EndSession 实现结束会话逻辑, 也需要一个对应的路径
 func (s *sessionService) EndSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error {
-	//需要处理的是 endtime 和还残留的一些压缩数据
+	sessionid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return fmt.Errorf("解析失败，请检查 session_id 格式是否正确")
+	}
+	sessionInfo := db.UpdateSessionEndTimeParams{
+		ID: 	sessionid,
+		EndTime: sql.NullTime{Time: req.EndTime, Valid: true},
+	}
+	err = s.queries.UpdateSessionEndTime(ctx, sessionInfo)
+	if err != nil {
+		return fmt.Errorf("更新会话结束时间失败")
+	}
+
+	//这里的存储就要调用解析存储的逻辑函数了
 	return nil
 }
 

@@ -4,7 +4,7 @@ import (
 	"NewsEyeTracking/internal/db"
 	"NewsEyeTracking/internal/utils"
 	"context"
-	"fmt"
+
 	"log"
 	"time"
 )
@@ -14,8 +14,7 @@ type UploadService interface {
 	// StartMonitoring 启动文件监控和自动上传
 	StartMonitoring(ctx context.Context) error
 	
-	// GetUploadStats 获取上传统计信息
-	GetUploadStats(ctx context.Context) (map[string]interface{}, error)
+
 	// BackupData 备份数据
 	BackupData(ctx context.Context) error
 	// CleanupOldData 清理过期数据
@@ -82,26 +81,6 @@ func (s *uploadService) StartMonitoring(ctx context.Context) error {
 	return nil
 }*/
 
-// GetUploadStats 获取上传统计信息
-func (s *uploadService) GetUploadStats(ctx context.Context) (map[string]interface{}, error) {
-	// 从文件系统获取统计信息
-	fileStats, err := s.uploader.GetStats()
-	if err != nil {
-		return nil, fmt.Errorf("获取文件统计信息失败: %v", err)
-	}
-	
-	// TODO: 可以从数据库获取历史上传记录等信息
-	// uploadHistory, err := s.queries.GetUploadHistory(ctx)
-	
-	// 合并统计信息
-	stats := map[string]interface{}{
-		"file_stats":    fileStats,
-		"last_check":    time.Now().Format(time.RFC3339),
-		"service_status": "running",
-	}
-	
-	return stats, nil
-}
 
 // BackupData 备份数据
 func (s *uploadService) BackupData(ctx context.Context) error {

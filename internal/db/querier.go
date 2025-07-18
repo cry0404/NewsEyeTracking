@@ -46,6 +46,8 @@ type Querier interface {
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
 	// 只查询邀请码信息（不增加计数，用于纯查询场景）
 	MarkInviteCodeAsUsed(ctx context.Context, code string) error
+	// 只是需要记录结束时间就可以了，不需要返回
+	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

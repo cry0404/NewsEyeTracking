@@ -47,9 +47,3 @@ type CreateSessionResponse struct {
 
 
 
-type EndSessionRequest struct {
-	EndTime        time.Time `json:"end_time" binding:"required"`
-	CompressedData *string   `json:"compressed_data"` // 最后一批压缩数据
-}
-
-

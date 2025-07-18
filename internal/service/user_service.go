@@ -179,13 +179,13 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *models
 	updatedUser, err := s.queries.UpdateUser(ctx, updateParams)
 	if err != nil {
 		// 如果用户不存在，尝试创建用户
-		if err == sql.ErrNoRows {
+if err == sql.ErrNoRows {
 			// 需要从邀请码获取 email
 			inviteInfo, inviteErr := s.queries.GetIdAndEmailByCodeID(ctx, newUserID)
 			if inviteErr != nil {
 				return nil, fmt.Errorf("用户不存在且无法通过邀请码创建: %w", inviteErr)
 			}
-			
+
 			// 创建用户
 			createParams := db.CreateUserParams{
 				ID:                  newUserID,
@@ -202,11 +202,12 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *models
 				VisionStatus:        buildNullStringFromPtr(req.VisionStatus),
 				IsVisionCorrected:   buildNullBoolFromPtr(req.IsVisionCorrected),
 			}
-			
+
 			updatedUser, err = s.queries.CreateUser(ctx, createParams)
 			if err != nil {
 				return nil, fmt.Errorf("创建用户失败: %w", err)
 			}
+			return &models.User{ID: updatedUser.ID}, nil
 		} else {
 			return nil, fmt.Errorf("更新用户信息失败: %w", err)
 		}
@@ -257,7 +258,7 @@ func (s *userService) UpdateLoginState(ctx context.Context, userID uuid.UUID) (s
 	}
 
 	// JWT 过期时间
-	expireDuration :=  7 * 24 * time.Hour//暂时先调整这么多，等到上线再调整为 15min？
+	expireDuration :=  5 * time.Minute//暂时先调整这么多，等到上线再调整为 15min？
 	token, err := middleware.MakeJWT(userID, jwtSecret, expireDuration)
 	if err != nil {
 		return "", fmt.Errorf("生成JWT token失败: %w", err)

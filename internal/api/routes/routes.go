@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(router *gin.Engine, services *service.Services) {
+func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handlers {
 	//全局处都需要使用到的中间件就定义到 middleware
 
 	router.Use(middleware.ErrorHandler())
@@ -47,7 +47,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 			// 用户会话管理（简化版）
 			//protected.POST("/session/init", h.InitUserSession)           // 整体的启动，应该整合在 code 路由中去，而且 init 中就应该判断会话状态
 			//protected.POST("/session/data", h.ProcessSessionData)       // 统一数据上传接口，但这里是文章页的逻辑来
-			//protected.PATCH("/sessions/:session_id", h.EndSession)
+			protected.PUT("/sessions/:session_id", h.EndReadingSession)
 			
 			// 会话管理
 			//protected.POST("/sessions", h.CreateSession)
@@ -73,4 +73,6 @@ func SetupRoutes(router *gin.Engine, services *service.Services) {
 		}
 
 	}
+	
+	return h
 }

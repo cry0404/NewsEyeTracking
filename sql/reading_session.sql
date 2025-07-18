@@ -9,6 +9,9 @@ INSERT INTO reading_sessions (
 )VALUES(
     uuid_generate_v4(), $1, $2, $3, $4
 ) RETURNING *;
+-- 只是需要记录结束时间就可以了，不需要返回
+-- name: UpdateSessionEndTime :exec
+UPDATE reading_sessions SET end_time = $2 WHERE id = $1;
 
 -- 会话查询
 -- name: GetSessionByID :one

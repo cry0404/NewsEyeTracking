@@ -16,6 +16,7 @@ type ErrorInfo struct {
 
 // 常用错误代码
 const (
+	ErrorBadRequest			   = "WRONG REQUEST"
 	ErrorCodeInvalidRequest    = "INVALID_REQUEST"
 	ErrorCodeUnauthorized      = "UNAUTHORIZED"
 	ErrorCodeForbidden         = "FORBIDDEN"

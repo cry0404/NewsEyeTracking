@@ -20,6 +20,10 @@ type NewsService interface {
 	GetNews(ctx context.Context, userID string, limit int) (*models.NewsListResponse, error)
 	// GetNewsDetail 获取新闻详情
 	GetNewsDetail(ctx context.Context, newsID string) (*models.NewsDetailResponse, error)
+	// Stop 停止后台任务并刷新缓存
+	Stop()
+	// FlushCache 手动刷新缓存
+	FlushCache()
 }
 
 // newsService 新闻服务实现
@@ -63,7 +67,6 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int) (*m
 
 	// 获取新闻列表
 	// 如果启用推荐算法，这里可以调用推荐算法，在这里接入推荐算法？
-	// 暂时直接获取最新的新闻
 articles, err := s.queries.GetRandomArticles(ctx, db.GetRandomArticlesParams{
 		PublishedAt: sql.NullTime{Time: time.Now().AddDate(0, 0, -7), Valid: true}, // 最近7天的新闻
 		Limit:       int32(limit),
@@ -100,7 +103,7 @@ articles, err := s.queries.GetRandomArticles(ctx, db.GetRandomArticlesParams{
 		newsGUIDs = append(newsGUIDs, article.Guid)
 	}
 
-	// 将用户浏览的新闻GUID添加到缓存
+	// 错误检查后，将用户浏览的新闻GUID添加到缓存
 	s.addToCache(userID, newsGUIDs)
 
 	// 根据A/B测试配置决定点赞收藏评论
