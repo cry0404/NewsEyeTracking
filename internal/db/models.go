@@ -49,14 +49,12 @@ type InviteCode struct {
 }
 
 type ReadingSession struct {
-	ID                uuid.UUID             `json:"id"`
-	UserID            uuid.UUID             `json:"user_id"`
-	ArticleID         int32                 `json:"article_id"`
-	StartTime         sql.NullTime          `json:"start_time"`
-	EndTime           sql.NullTime          `json:"end_time"`
-	DeviceInfo        pqtype.NullRawMessage `json:"device_info"`
-	SessionDurationMs sql.NullInt64         `json:"session_duration_ms"`
-	UserSessionID     uuid.NullUUID         `json:"user_session_id"`
+	ID         uuid.UUID             `json:"id"`
+	UserID     uuid.UUID             `json:"user_id"`
+	ArticleID  string                `json:"article_id"`
+	StartTime  sql.NullTime          `json:"start_time"`
+	EndTime    sql.NullTime          `json:"end_time"`
+	DeviceInfo pqtype.NullRawMessage `json:"device_info"`
 }
 
 type User struct {

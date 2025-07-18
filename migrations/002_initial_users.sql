@@ -47,16 +47,16 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE reading_sessions (
     id                   UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id              UUID NOT NULL, -- 引用 users.id, 类型必须是 UUID
-    article_id           INTEGER NOT NULL,  -- 将列表页定义为 0 ， 这样就独立了列表的数据记录？
+    article_id           VARCHAR(512) NOT NULL,  -- 将列表页定义为 0 ， 这样就独立了列表的数据记录？
     start_time           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    end_time             TIMESTAMP WITH TIME ZONE,
+    end_time             TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     device_info          JSONB,  -- 这里可以记录分辨率
     
     
-    session_duration_ms  BIGINT,  -- 感觉其实不太需要
+   
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (article_id) REFERENCES feed_items(id) ON DELETE CASCADE -- 确保 feed_items 表存在
+    FOREIGN KEY (article_id) REFERENCES feed_items(guid) ON DELETE CASCADE -- 确保 feed_items 表存在
 );
 
 -- 索引

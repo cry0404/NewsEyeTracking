@@ -127,3 +127,51 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 	}
 	return items, nil
 }
+
+const getRandomArticles = `-- name: GetRandomArticles :many
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
+WHERE published_at > $1  -- 最近一段时间的新闻
+ORDER BY RANDOM()
+LIMIT $2
+`
+
+type GetRandomArticlesParams struct {
+	PublishedAt sql.NullTime `json:"published_at"`
+	Limit       int32        `json:"limit"`
+}
+
+// 随机获取新闻文章
+func (q *Queries) GetRandomArticles(ctx context.Context, arg GetRandomArticlesParams) ([]FeedItem, error) {
+	rows, err := q.db.QueryContext(ctx, getRandomArticles, arg.PublishedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FeedItem
+	for rows.Next() {
+		var i FeedItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.FeedID,
+			&i.Title,
+			&i.Description,
+			&i.Content,
+			&i.Link,
+			&i.Guid,
+			&i.Author,
+			pq.Array(&i.Keywords),
+			&i.PublishedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

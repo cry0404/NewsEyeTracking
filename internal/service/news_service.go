@@ -64,7 +64,7 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int) (*m
 	// 获取新闻列表
 	// 如果启用推荐算法，这里可以调用推荐算法，在这里接入推荐算法？
 	// 暂时直接获取最新的新闻
-	articles, err := s.queries.GetNewArticles(ctx, db.GetNewArticlesParams{
+articles, err := s.queries.GetRandomArticles(ctx, db.GetRandomArticlesParams{
 		PublishedAt: sql.NullTime{Time: time.Now().AddDate(0, 0, -7), Valid: true}, // 最近7天的新闻
 		Limit:       int32(limit),
 	})

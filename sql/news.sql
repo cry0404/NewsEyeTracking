@@ -5,6 +5,13 @@ WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2;
 
+-- 随机获取新闻文章
+-- name: GetRandomArticles :many
+SELECT * FROM feed_items
+WHERE published_at > $1  -- 最近一段时间的新闻
+ORDER BY RANDOM()
+LIMIT $2;
+
 -- 获取文章的详细信息， 这里需要根据文章的id来获取
 -- name: GetArticleByID :one
 SELECT feed_id, title, description, content, link, guid, author, published_at 

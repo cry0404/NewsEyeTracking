@@ -34,20 +34,18 @@ type Querier interface {
 	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
+	// 随机获取新闻文章
+	GetRandomArticles(ctx context.Context, arg GetRandomArticlesParams) ([]FeedItem, error)
 	// 会话查询
 	GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSession, error)
 	GetUserABTestConfig(ctx context.Context, id uuid.UUID) (GetUserABTestConfigRow, error)
 	GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
-	// 会话统计查询
-	GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error)
 	// A/B 测试相关查询
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
 	// 只查询邀请码信息（不增加计数，用于纯查询场景）
 	MarkInviteCodeAsUsed(ctx context.Context, code string) error
-	// 会话更新操作
-	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 
