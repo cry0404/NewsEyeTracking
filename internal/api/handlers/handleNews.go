@@ -67,7 +67,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
 			"获取新闻列表失败",
-			err.Error(),
+			"请先检查请求格式",
 		))
 		return
 	}
@@ -95,7 +95,7 @@ func (h *Handlers) GetNews(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,
 			"阅读会话创建失败",
-			"服务器内部发生错误，请通知运营人员",
+			err.Error(),
 		))
 		return
 	}

@@ -46,6 +46,22 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 
 	//这里就可以通过 userid 来返回类似于注册时的用户信息了, 无论如何第一次都应该返回，然后统一接口
 	userID := codeInfo.ID
+	
+	// 检查用户是否存在，如果不存在就创建一个基本的用户记录
+	_, err = h.services.User.GetUserByID(ctx, userID.String())
+	if err != nil {
+		// 用户不存在，创建一个基本的用户记录
+		_, createErr := h.services.User.UpdateUser(ctx, userID.String(), &models.UserRequest{})
+		if createErr != nil {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+				models.ErrorCodeInternalError,
+				"创建用户失败",
+				createErr.Error(),
+			))
+			return
+		}
+	}
+	
 	token, err := h.services.User.UpdateLoginState(ctx, userID)//更新 jwt 的
 	if err != nil{
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
