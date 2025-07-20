@@ -87,13 +87,10 @@ func (r *SessionDataRequest) Validate() error {
 		return nil // 心跳包不需要其他数据验证
 	}
 
-	/*// 数据传输验证, 现在 session id 放在了 url 参数就不需要了
+	// 数据传输验证（session_id 从 URL 参数获取，不需要在请求体中验证）
 	if r.HasTrackingData() {
-		if r.SessionID == nil {
-			return fmt.Errorf("session_id is required for tracking data")
-		}
-		return nil
-	}*/
+		return nil // 有追踪数据就是有效的
+	}
 
 	// 如果既不是心跳包也没有追踪数据，则为无效请求
 	return fmt.Errorf("request must be either a heartbeat or contain tracking data")

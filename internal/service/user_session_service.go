@@ -30,6 +30,8 @@ type UserSessionService interface {
 	GetSessionStatus(ctx context.Context, sessionID uuid.UUID) (*models.SessionStatusResponse, error)
 	// EndSession 手动结束会话
 	EndUserSession(ctx context.Context, sessionID uuid.UUID) error
+	// GetActiveUserSessionByUserID 根据用户ID获取活跃会话
+	GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (*db.GetActiveUserSessionByUserIDRow, error)
 }
 
 // userSessionService 用户会话服务实现
@@ -105,27 +107,27 @@ func (s *userSessionService) CreateUserSession(ctx context.Context, userID uuid.
 /*# 在redis.conf中添加：
 notify-keyspace-events Ex */
 
-// CheckSingleSessionLimit 在这里检查并创建应该也是可以的
+// CheckSingleSessionLimit 检查用户的单会话限制（只使用Redis）
 func (s *userSessionService) CheckSingleSessionLimit(ctx context.Context, userID uuid.UUID) error {
 	// 构建用户会话键
 	userSessionKey := s.buildUserSessionKey(userID)
 
-	// 尝试获取当前用户的会话
+	// 尝试从 Redis 获取当前用户的会话
 	sessionData, err := s.getSessionFromRedis(ctx, userSessionKey)
 	if err != nil {
 		if err.Error() == "会话不存在" {
-			// 如果没有存在的会话，表示可以创建
+			// Redis 中没有活跃会话，可以创建新会话
 			return nil
 		}
-		return fmt.Errorf("查询用户会话失败: %v", err)
+		return fmt.Errorf("查询 Redis 失败")
 	}
 
-	// 如果存在活跃的会话且未过期，则返回错误，拒绝新的登录
+	// 检查 Redis 中的会话是否仍然活跃且未过期
 	if sessionData.IsActive && time.Since(sessionData.LastHeartbeat) <= heartbeatTTL {
 		return fmt.Errorf("用户已在其他位置登录")
 	}
 
-	// 否则，可以创建新的会话
+	// 会话已过期或不活跃，可以创建新的会话
 	return nil
 }
 
@@ -171,7 +173,7 @@ func (s *userSessionService) Heartbeat(ctx context.Context, req *models.Heartbea
 	now := time.Now()
 	heartbeatTimeoutSeconds := int32(heartbeatTTL.Seconds())
 
-	// 1. 更新数据库中的心跳时间，并检查是否过期
+	// 更新数据库中的心跳时间，并检查是否过期
 	err := s.queries.UpdateHeartbeatWithExpireCheck(ctx, db.UpdateHeartbeatWithExpireCheckParams{
 		Column1: now,
 		Column2: heartbeatTimeoutSeconds,
@@ -181,7 +183,7 @@ func (s *userSessionService) Heartbeat(ctx context.Context, req *models.Heartbea
 		return nil, fmt.Errorf("更新数据库心跳失败: %w", err)
 	}
 
-	// 2. 从数据库获取更新后的会话状态
+	//  从数据库获取更新后的会话状态
 	session, err := s.queries.GetUserSessionByID(ctx, req.SessionID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -194,7 +196,7 @@ func (s *userSessionService) Heartbeat(ctx context.Context, req *models.Heartbea
 		return nil, fmt.Errorf("获取会话信息失败: %w", err)
 	}
 
-	// 3. 检查会话是否仍然活跃
+	// 检查会话是否仍然活跃
 	if !session.IsActive.Bool {
 		return &models.HeartbeatResponse{
 			SessionID:     req.SessionID,
@@ -254,7 +256,7 @@ func (s *userSessionService) GetSessionStatus(ctx context.Context, sessionID uui
 // EndUserSession 手动结束会话
 func (s *userSessionService) EndUserSession(ctx context.Context, sessionID uuid.UUID) error {
 	now := time.Now()
-	
+
 	// 更新数据库
 	err := s.queries.EndUserSession(ctx, db.EndUserSessionParams{
 		EndTime: sql.NullTime{Time: now, Valid: true},
@@ -280,11 +282,20 @@ func (s *userSessionService) EndUserSession(ctx context.Context, sessionID uuid.
 // CleanupExpiredSessions 清理过期会话（定时任务使用）
 func (s *userSessionService) CleanupExpiredSessions(ctx context.Context) error {
 	heartbeatTimeoutSeconds := int32(heartbeatTTL.Seconds())
-	
+
 	err := s.queries.CleanupExpiredSessions(ctx, heartbeatTimeoutSeconds)
 	if err != nil {
 		return fmt.Errorf("清理过期会话失败: %w", err)
 	}
 
 	return nil
+}
+
+// GetActiveUserSessionByUserID 根据用户ID获取活跃会话
+func (s *userSessionService) GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (*db.GetActiveUserSessionByUserIDRow, error) {
+	row, err := s.queries.GetActiveUserSessionByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
 }

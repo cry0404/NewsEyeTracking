@@ -3,6 +3,7 @@ package handlers
 import (
 	"NewsEyeTracking/internal/models"
 	"NewsEyeTracking/internal/utils"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -67,7 +68,18 @@ func (h *Handlers) EndReadingSession(c *gin.Context) {
 	ctx, cancel := utils.WithWriteTimeout(c.Request.Context())
 	defer cancel()
 
-	// 如果请求中包含最后一批追踪数据，先保存到缓存
+	// 首先验证阅读会话是否存在且有效（在保存数据之前）
+	err := h.services.Session.EndReadingSession(ctx, sessionID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+			models.ErrorCodeInternalError,
+			"结束会话失败",
+			err.Error(),
+		))
+		return
+	}
+
+	// 会话验证成功后，才保存最后一批追踪数据
 	if req.Data != nil && !req.Data.IsEmpty() {
 		// 构造一个临时的SessionDataRequest来复用缓存逻辑
 		// 使用 sessionID 从路径参数中获取，并转换为 UUID
@@ -95,17 +107,6 @@ func (h *Handlers) EndReadingSession(c *gin.Context) {
 			))
 			return
 		}
-	}
-
-	// 调用服务层结束会话
-	err := h.services.Session.EndReadingSession(ctx, sessionID, &req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
-			models.ErrorCodeInternalError,
-			"结束会话失败",
-			err.Error(),
-		))
-		return
 	}
 
 	// 返回成功响应
@@ -190,9 +191,44 @@ func (h *Handlers) ProcessSessionData(c *gin.Context) {
 		return
 	}
 
-	// 处理心跳包
+	// 处理心跳包（可能携带数据）
 	if req.IsHeartbeat() {
-		// 返回心跳包响应
+		// 1. 如果心跳包携带追踪数据，先保存数据
+		if req.HasTrackingData() {
+			// 设置会话ID（从 URL 参数）
+			req.SessionID = &sessionID
+			
+			// 添加到缓存
+			if err := h.addToTrackingCache(userID, &req); err != nil {
+				c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+					models.ErrorCodeInternalError,
+					"心跳包保存追踪数据失败",
+					err.Error(),
+				))
+				return
+			}
+		}
+		
+		// 2. 更新用户会话的 Redis 心跳状态
+		userUUID, err := uuid.Parse(userID)
+		if err == nil {
+			// 获取用户的活跃会话
+			activeSession, err := h.services.UserSession.GetActiveUserSessionByUserID(c.Request.Context(), userUUID)
+			if err == nil && activeSession.IsActive.Bool {
+				// 更新用户会话心跳
+				heartbeatReq := &models.HeartbeatRequest{
+					SessionID: activeSession.ID,
+					Timestamp: req.Timestamp,
+				}
+				_, heartbeatErr := h.services.UserSession.Heartbeat(c.Request.Context(), heartbeatReq)
+				if heartbeatErr != nil {
+					// 心跳更新失败不影响主流程，只记录日志
+					fmt.Printf("更新用户会话心跳失败: %v\n", heartbeatErr)
+				}
+			}
+		}
+		
+		// 3. 返回心跳包响应
 		response := models.NewHeartbeatResponse()
 		c.JSON(http.StatusOK, models.SuccessResponse(response))
 		return
