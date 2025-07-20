@@ -19,7 +19,7 @@ type SessionService interface {
 	CreateSessionForList(ctx context.Context, userID string, req *models.CreateSessionRequestForArticles) (*models.CreateSessionResponse, error)
 	CreateSessionForFeed(ctx context.Context, userID string, req *models.CreateSessionRequestForArticle) (*models.CreateSessionResponse, error)
 	// EndSession 结束阅读会话
-	EndSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error
+	EndReadingSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error
 	
 }
 
@@ -130,7 +130,7 @@ func (s *sessionService) CreateSessionForFeed(ctx context.Context, userID string
 
 
 // EndSession 实现结束会话逻辑, 也需要一个对应的路径
-func (s *sessionService) EndSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error {
+func (s *sessionService) EndReadingSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error {
 	sessionid, err := uuid.Parse(sessionID)
 	if err != nil {
 		return fmt.Errorf("解析失败，请检查 session_id 格式是否正确")

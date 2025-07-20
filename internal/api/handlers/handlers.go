@@ -73,7 +73,7 @@ func (h *Handlers) addToTrackingCache(userID string, req *models.SessionDataRequ
 		Data:      *req.Data,
 	}
 	
-	// 添加到缓存
+	
 	h.trackingCache[userID] = append(h.trackingCache[userID], record)
 	
 	return nil
@@ -88,7 +88,7 @@ func (h *Handlers) flushTrackingCache() {
 		return
 	}
 	
-	// 创建今天的日期目录
+	// 创建今天的日期目录 - 统一所有追踪数据（眼动、点击、滚动）
 	today := time.Now().Format("2006-01-02")
 	dateDir := fmt.Sprintf("data/tracking/%s", today)
 	if err := os.MkdirAll(dateDir, 0755); err != nil {
@@ -118,10 +118,21 @@ func (h *Handlers) flushTrackingCache() {
 			continue
 		}
 		
-		fmt.Printf("成功写入用户%s的%d条追踪记录\n", userID, len(records))
+		// 统计事件数量
+		totalEyeEvents := 0
+		totalClickEvents := 0
+		totalScrollEvents := 0
+		for _, record := range records {
+			totalEyeEvents += len(record.Data.EyeEvents)
+			totalClickEvents += len(record.Data.ClickEvents)
+			totalScrollEvents += len(record.Data.ScrollEvents)
+		}
+		
+		fmt.Printf("成功写入用户%s的%d条追踪记录（眼动:%d, 点击:%d, 滚动:%d）\n", 
+			userID, len(records), totalEyeEvents, totalClickEvents, totalScrollEvents)
 	}
 	
-	// 清空缓存
+	// 通过新创建来手动更新缓存
 	h.trackingCache = make(map[string][]models.UserTrackingRecord)
 	h.lastFlush = time.Now()
 }
@@ -251,7 +262,7 @@ func (h *Handlers) appendToNewsFile(filePath string, newBatchRecord models.UserN
 	return nil
 }
 
-// AddToNewsCache 将新闻数据添加到内存缓存（供其他处理器调用）
+// AddToNewsCache 将新闻数据添加到内存缓存
 func (h *Handlers) AddToNewsCache(userID string, newsGUIDs []string) {
 	h.cacheMutex.Lock()
 	defer h.cacheMutex.Unlock()
@@ -270,7 +281,7 @@ func (h *Handlers) Stop() {
 	h.FlushCaches() // 最后一次刷新
 }
 
-// FlushCaches 手动刷新所有数据缓存（用于优雅关闭）
+
 func (h *Handlers) FlushCaches() {
 	h.flushTrackingCache()
 	h.flushNewsCache()

@@ -11,7 +11,8 @@ SET count = COALESCE(count, 0) + 1
 WHERE code = $1
 RETURNING id, code, is_used, count;
 
-
+-- name: IsInviteCodeUsed :one
+SELECT is_used FROM invite_codes WHERE code = $1;
 
 -- 只查询邀请码信息（不增加计数，用于纯查询场景）
 -- name: MarkInviteCodeAsUsed :exec

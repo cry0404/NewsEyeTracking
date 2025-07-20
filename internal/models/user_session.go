@@ -50,23 +50,7 @@ type HeartbeatResponse struct {
 	Message       string    `json:"message,omitempty"`
 }
 
-// DataUploadRequest 数据上传请求（包含心跳检测）
-type DataUploadRequest struct {
-	SessionID      uuid.UUID `json:"session_id" binding:"required"`
-	DataType       string    `json:"data_type" binding:"required"` // "heartbeat", "eyetracking", "mixed"
-	CompressedData string    `json:"compressed_data" binding:"required"`
-	Timestamp      time.Time `json:"timestamp" binding:"required"`
-}
 
-// DataUploadResponse 数据上传响应
-type DataUploadResponse struct {
-	SessionID       uuid.UUID `json:"session_id"`
-	ProcessedType   string    `json:"processed_type"` // "heartbeat_only", "eyetracking_only", "mixed"
-	HeartbeatStatus string    `json:"heartbeat_status,omitempty"`
-	DataSize        int64     `json:"data_size,omitempty"`
-	EventCount      int       `json:"event_count,omitempty"`
-	Message         string    `json:"message,omitempty"`
-}
 
 // SessionStatusResponse 会话状态响应
 type SessionStatusResponse struct {

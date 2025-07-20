@@ -36,18 +36,19 @@ type TrackingData struct {
 }
 
 // SessionDataRequest 会话数据请求（支持心跳包和数据传输的混合格式）
+// session_id 从 URL 参数获取，不需要在请求体中包含
 type SessionDataRequest struct {
-	SessionID *uuid.UUID    `json:"session_id,omitempty"` // 会话ID（数据传输时必须）
+	SessionID *uuid.UUID    `json:"-"` // 内部使用，从URL参数设置，不序列化到JSON
 	Data      *TrackingData `json:"data,omitempty"`       // 追踪数据（数据传输时包含）
 	Ping      *bool         `json:"ping,omitempty"`       // 心跳包标识（心跳时为 true）
 	Timestamp time.Time     `json:"timestamp"`            // 请求时间戳
 }
 
 // EndSessionRequest 结束会话请求
+// session_id 从 URL 参数获取，不需要在请求体中包含
 type EndSessionRequest struct {
-	EndTime   time.Time     `json:"end_time" binding:"required"`
-	SessionID *uuid.UUID    `json:"session_id,omitempty"`
-	Data      *TrackingData `json:"data,omitempty"` // 最后一批追踪数据
+	EndTime time.Time     `json:"end_time" binding:"required"`
+	Data    *TrackingData `json:"data,omitempty"` // 最后一批追踪数据
 }
 
 // UserTrackingRecord 用户追踪记录（用于缓存）
@@ -69,8 +70,9 @@ func (r *SessionDataRequest) IsHeartbeat() bool {
 }
 
 // HasTrackingData 检查是否包含追踪数据
+// SessionID 从 URL 参数设置，只需要检查 Data 字段
 func (r *SessionDataRequest) HasTrackingData() bool {
-	return r.SessionID != nil && r.Data != nil && !r.Data.IsEmpty()
+	return r.Data != nil && !r.Data.IsEmpty()
 }
 
 // IsEmpty 检查追踪数据是否为空
@@ -85,13 +87,13 @@ func (r *SessionDataRequest) Validate() error {
 		return nil // 心跳包不需要其他数据验证
 	}
 
-	// 数据传输验证
+	/*// 数据传输验证, 现在 session id 放在了 url 参数就不需要了
 	if r.HasTrackingData() {
 		if r.SessionID == nil {
 			return fmt.Errorf("session_id is required for tracking data")
 		}
 		return nil
-	}
+	}*/
 
 	// 如果既不是心跳包也没有追踪数据，则为无效请求
 	return fmt.Errorf("request must be either a heartbeat or contain tracking data")

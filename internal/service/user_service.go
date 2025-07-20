@@ -36,80 +36,7 @@ type userService struct {
 func NewUserService(queries *db.Queries) UserService {
 	return &userService{queries: queries}
 }
-/*
-// CreateUser 实现用户创建逻辑（包含JWT生成）
-func (s *userService) CreateUser(ctx context.Context, req *models.UserRequest) (*models.UserRegisterResponse, error) {
-//现在创建不需要 invitecode 了，随便更新
-	UserInfo, err := s.queries.GetIdAndEmailByCode(ctx, req.InviteCode)
-	if err != nil {
-		return nil, fmt.Errorf("邀请码无效")
-	}
 
-
-	if err := validateRequiredFields(req); err != nil {
-		return nil, fmt.Errorf("字段验证失败")
-	}
-
-
-	var dateOfBirth *time.Time
-	if req.DateOfBirth != nil {
-		parsedDate, err := parseDate(*req.DateOfBirth)
-		if err != nil {
-			return nil, fmt.Errorf("日期格式错误")
-		}
-		dateOfBirth = &parsedDate
-	}
-
-
-	User, err := s.queries.CreateUser(ctx, db.CreateUserParams{
-		ID:                  UserInfo.ID,
-		Email:               UserInfo.Email,
-		Gender:              sql.NullString{String: *req.Gender, Valid: req.Gender != nil},
-		Age:                 sql.NullInt32{Int32: int32(*req.Age), Valid: req.Age != nil},
-		DateOfBirth:         sql.NullTime{Time: *dateOfBirth, Valid: req.DateOfBirth != nil},
-		EducationLevel:      sql.NullString{String: *req.EducationLevel, Valid: req.EducationLevel != nil},
-		Residence:           sql.NullString{String: *req.Residence, Valid: req.Residence != nil},
-		WeeklyReadingHours:  sql.NullInt32{Int32: int32(*req.WeeklyReadingHours), Valid: req.WeeklyReadingHours != nil},
-		PrimaryNewsPlatform: sql.NullString{String: *req.PrimaryNewsPlatform, Valid: req.PrimaryNewsPlatform != nil},
-		IsActiveSearcher:    sql.NullBool{Bool: *req.IsActiveSearcher, Valid: req.IsActiveSearcher != nil},
-		IsColorblind:        sql.NullBool{Bool: *req.IsColorblind, Valid: req.IsColorblind != nil},
-		VisionStatus:        sql.NullString{String: *req.VisionStatus, Valid: req.VisionStatus != nil},
-		IsVisionCorrected:   sql.NullBool{Bool: *req.IsVisionCorrected, Valid: req.IsVisionCorrected != nil},
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("创建用户失败")
-	}
-
-	// 这里标记一次就够了， user_service 调用 handleUser 的方法
-	err = s.queries.MarkInviteCodeAsUsed(ctx, req.InviteCode)
-	if err != nil {
-		return nil, fmt.Errorf("邀请码使用失败")
-	}
-
-	//把生成 jwt token 直接封装成一个方法
-	err = godotenv.Load()
-	if err != nil {
-		return nil, fmt.Errorf("加载环境变量失败: %w", err)
-	}
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET 环境变量未设置")
-	}
-
-	// JWT 过期时间
-	expireDuration :=  7 * 24 * time.Hour//暂时先调整这么多，等到上线再调整为 15min？
-	token, err := middleware.MakeJWT(User.ID, jwtSecret, expireDuration)
-	if err != nil {
-		return nil, fmt.Errorf("生成JWT token失败: %w", err)
-	}
-
-
-	return &models.UserRegisterResponse{
-		UserID: User.ID,
-		Token:  token,
-	}, nil
-}*/
 
 
 // GetUserByID 根据ID获取用户信息
@@ -144,13 +71,13 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*models.U
 
 // UpdateUser 统一的用户更新接口，所有字段都不强制要求
 func (s *userService) UpdateUser(ctx context.Context, userID string, req *models.UserRequest) (*models.User, error) {
-	// 解析用户ID
+	
 	newUserID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("用户ID解析失败，请确认用户ID格式: %w", err)
 	}
 
-	// 处理日期格式转换
+	//这里需要更新 code 中的使用，如果登录成功了，那么邀请码就算使用了
 	var dateOfBirth *time.Time
 	if req.DateOfBirth != nil {
 		parsedDate, err := parseDate(*req.DateOfBirth)
@@ -212,7 +139,8 @@ if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("更新用户信息失败: %w", err)
 		}
 	}
-
+   	//在最后这个部分更新邀请码已经使用
+	
 	// 转换为模型对象
 	return &models.User{
 		ID:                  updatedUser.ID,
@@ -258,7 +186,7 @@ func (s *userService) UpdateLoginState(ctx context.Context, userID uuid.UUID) (s
 	}
 
 	// JWT 过期时间
-	expireDuration :=  5 * time.Minute//暂时先调整这么多，等到上线再调整为 15min？
+	expireDuration :=  60 * time.Minute//暂时先调整这么多，等到上线再调整为 15min？
 	token, err := middleware.MakeJWT(userID, jwtSecret, expireDuration)
 	if err != nil {
 		return "", fmt.Errorf("生成JWT token失败: %w", err)
@@ -365,3 +293,78 @@ func validateRequiredFields(req *models.RegisterRequest) error {
 }
 */ 
 //都可以为空，不需要强制验证了
+
+/*
+// CreateUser 实现用户创建逻辑（包含JWT生成）
+func (s *userService) CreateUser(ctx context.Context, req *models.UserRequest) (*models.UserRegisterResponse, error) {
+//现在创建不需要 invitecode 了，随便更新
+	UserInfo, err := s.queries.GetIdAndEmailByCode(ctx, req.InviteCode)
+	if err != nil {
+		return nil, fmt.Errorf("邀请码无效")
+	}
+
+
+	if err := validateRequiredFields(req); err != nil {
+		return nil, fmt.Errorf("字段验证失败")
+	}
+
+
+	var dateOfBirth *time.Time
+	if req.DateOfBirth != nil {
+		parsedDate, err := parseDate(*req.DateOfBirth)
+		if err != nil {
+			return nil, fmt.Errorf("日期格式错误")
+		}
+		dateOfBirth = &parsedDate
+	}
+
+
+	User, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+		ID:                  UserInfo.ID,
+		Email:               UserInfo.Email,
+		Gender:              sql.NullString{String: *req.Gender, Valid: req.Gender != nil},
+		Age:                 sql.NullInt32{Int32: int32(*req.Age), Valid: req.Age != nil},
+		DateOfBirth:         sql.NullTime{Time: *dateOfBirth, Valid: req.DateOfBirth != nil},
+		EducationLevel:      sql.NullString{String: *req.EducationLevel, Valid: req.EducationLevel != nil},
+		Residence:           sql.NullString{String: *req.Residence, Valid: req.Residence != nil},
+		WeeklyReadingHours:  sql.NullInt32{Int32: int32(*req.WeeklyReadingHours), Valid: req.WeeklyReadingHours != nil},
+		PrimaryNewsPlatform: sql.NullString{String: *req.PrimaryNewsPlatform, Valid: req.PrimaryNewsPlatform != nil},
+		IsActiveSearcher:    sql.NullBool{Bool: *req.IsActiveSearcher, Valid: req.IsActiveSearcher != nil},
+		IsColorblind:        sql.NullBool{Bool: *req.IsColorblind, Valid: req.IsColorblind != nil},
+		VisionStatus:        sql.NullString{String: *req.VisionStatus, Valid: req.VisionStatus != nil},
+		IsVisionCorrected:   sql.NullBool{Bool: *req.IsVisionCorrected, Valid: req.IsVisionCorrected != nil},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("创建用户失败")
+	}
+
+	// 这里标记一次就够了， user_service 调用 handleUser 的方法
+	err = s.queries.MarkInviteCodeAsUsed(ctx, req.InviteCode)
+	if err != nil {
+		return nil, fmt.Errorf("邀请码使用失败")
+	}
+
+	//把生成 jwt token 直接封装成一个方法
+	err = godotenv.Load()
+	if err != nil {
+		return nil, fmt.Errorf("加载环境变量失败: %w", err)
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET 环境变量未设置")
+	}
+
+	// JWT 过期时间
+	expireDuration :=  7 * 24 * time.Hour//暂时先调整这么多，等到上线再调整为 15min？
+	token, err := middleware.MakeJWT(User.ID, jwtSecret, expireDuration)
+	if err != nil {
+		return nil, fmt.Errorf("生成JWT token失败: %w", err)
+	}
+
+
+	return &models.UserRegisterResponse{
+		UserID: User.ID,
+		Token:  token,
+	}, nil
+}*/

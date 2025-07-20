@@ -46,8 +46,8 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 			
 			// 用户会话管理（简化版）
 			//protected.POST("/session/init", h.InitUserSession)           // 整体的启动，应该整合在 code 路由中去，而且 init 中就应该判断会话状态
-			//protected.POST("/session/data", h.ProcessSessionData)       // 统一数据上传接口，但这里是文章页的逻辑来
-			protected.PUT("/sessions/:session_id", h.EndReadingSession)
+			//      // 统一数据上传接口，但这里是文章页的逻辑来
+			//protected.POST("/sessions/:session_id", h.EndReadingSession)
 			
 			// 会话管理
 			//protected.POST("/sessions", h.CreateSession)
@@ -55,8 +55,10 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 			//下面这个来结束会话？
 			
 
-			//压缩数据上报
-			//protected.POST("/sessions/:session_id/data", h.UploadCompressedData)
+			// 会话数据处理 - 使用URL参数中的session_id
+			protected.POST("/sessions/:session_id/data", h.ProcessSessionData)
+			// 结束会话 API - 使用URL参数中的session_id
+			protected.POST("/sessions/:session_id/end", h.EndReadingSession)
 			//新闻相关
 			newsProtected := protected.Group("")
 			//newsProtected.Use(middleware.newsValid()) //这里实现的思路是把对应的 guid 区分开，检测天数，以免看太过时的新闻

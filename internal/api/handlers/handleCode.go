@@ -47,7 +47,8 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 	//这里就可以通过 userid 来返回类似于注册时的用户信息了, 无论如何第一次都应该返回，然后统一接口
 	userID := codeInfo.ID
 	
-	// 检查用户是否存在，如果不存在就创建一个基本的用户记录
+	// 检查用户是否存在，如果不存在就创建一个基本的用户记录，到时候邀请码又是与邮箱强绑定的，所以
+	// 在这里就可以把邮箱也绑定过去，就不用设置默认邮箱了
 	_, err = h.services.User.GetUserByID(ctx, userID.String())
 	if err != nil {
 		// 用户不存在，创建一个基本的用户记录
@@ -61,7 +62,8 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 			return
 		}
 	}
-	
+	//在这里更新邀请码已使用
+	//err = h.services.Auth.MarkInviteCodeAsUsed(ctx, code)
 	token, err := h.services.User.UpdateLoginState(ctx, userID)//更新 jwt 的
 	if err != nil{
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
