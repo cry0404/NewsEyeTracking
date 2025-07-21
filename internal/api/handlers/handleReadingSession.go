@@ -7,6 +7,7 @@ package handlers
 import (
 	"NewsEyeTracking/internal/models"
 	"NewsEyeTracking/internal/utils"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -165,6 +166,35 @@ func (h *Handlers) ProcessSessionData(c *gin.Context) {
 			models.ErrorCodeInvalidRequest,
 			"会话ID格式不正确",
 			err.Error(),
+		))
+		return
+	}
+
+	// 验证会话是否存在且未结束
+	existingSession, err := h.services.Session.GetSessionByID(c.Request.Context(), sessionID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, models.ErrorResponse(
+				models.ErrorCodeInvalidRequest,
+				"阅读会话不存在",
+				"会话ID无效",
+			))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+			models.ErrorCodeInternalError,
+			"查询阅读会话失败",
+			err.Error(),
+		))
+		return
+	}
+
+	// 验证会话是否已经结束
+	if existingSession.EndTime.Valid {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse(
+			models.ErrorCodeInvalidRequest,
+			"会话已结束",
+			"无法向已结束的会话发送数据",
 		))
 		return
 	}

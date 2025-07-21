@@ -23,7 +23,7 @@ func NewServices(database *sql.DB, redisClient *database.RedisClient) *Services 
 	return &Services{
 		User:        NewUserService(queries),
 		News:        NewNewsService(queries),
-		Session:     NewSessionService(queries, redisClient),
+		Session:     NewSessionService(queries),
 		UserSession: NewUserSessionService(queries, redisClient),
 		Auth:        NewAuthService(queries),
 		Upload:      NewUploadService(queries),
