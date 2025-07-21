@@ -31,9 +31,9 @@ type CreateUserSessionResponse struct {
 }
 
 type LoginResponse struct {
-	SessionID     uuid.UUID `json:"session_id"`
-	StartTime     time.Time `json:"start_time"`
-	Token string `json:"token"`
+	SessionID uuid.UUID `json:"session_id"`
+	StartTime time.Time `json:"start_time"`
+	Token     string    `json:"token"`
 }
 
 // HeartbeatRequest 心跳请求
@@ -50,16 +50,14 @@ type HeartbeatResponse struct {
 	Message       string    `json:"message,omitempty"`
 }
 
-
-
 // SessionStatusResponse 会话状态响应
 type SessionStatusResponse struct {
-	SessionID       uuid.UUID `json:"session_id"`
-	IsActive        bool      `json:"is_active"`
-	LastHeartbeat   time.Time `json:"last_heartbeat"`
-	IsExpired       bool      `json:"is_expired"`
-	CanCreateReading bool     `json:"can_create_reading"` // 是否可以创建阅读会话
+	SessionID        uuid.UUID `json:"session_id"`
+	IsActive         bool      `json:"is_active"`
+	LastHeartbeat    time.Time `json:"last_heartbeat"`
+	IsExpired        bool      `json:"is_expired"`
+	CanCreateReading bool      `json:"can_create_reading"` // 是否可以创建阅读会话
 }
 
 // RedisSessionData Redis中存储的会话数据，使用UserSession的结构
-type RedisSessionData UserSession
+type RedisUserSessionData UserSession

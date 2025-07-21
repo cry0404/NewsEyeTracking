@@ -14,12 +14,11 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 	router.Use(middleware.ErrorHandler())
 
 	router.Use(middleware.CORS())
-	
+
 	router.Use(middleware.Logger())
-	
 
 	h := handlers.NewHandlers(services)
-	
+
 	v1 := router.Group("/api/v1")
 	{
 
@@ -35,7 +34,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 		}
 		//还需要 session 管理
 		protected := v1.Group("")
-		// 测试研究的时候先禁用 jwt  
+		// 测试研究的时候先禁用 jwt
 		protected.Use(middleware.JWTAuth()) //这里每一个页面都需要有对应的 jwt
 		{
 			//用户相关
@@ -43,17 +42,16 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 			protected.GET("/auth/profile/", h.GetProfile)
 			protected.POST("/auth/profile", h.UpdateProfile)
 			protected.POST("/auth/profile/", h.UpdateProfile)
-			
+
 			// 用户会话管理（简化版）
 			//protected.POST("/session/init", h.InitUserSession)           // 整体的启动，应该整合在 code 路由中去，而且 init 中就应该判断会话状态
 			//      // 统一数据上传接口，但这里是文章页的逻辑来
 			//protected.POST("/sessions/:session_id", h.EndReadingSession)
-			
+
 			// 会话管理
 			//protected.POST("/sessions", h.CreateSession)
 
 			//下面这个来结束会话？
-			
 
 			// 会话数据处理 - 使用URL参数中的session_id
 			protected.POST("/sessions/:session_id/data", h.ProcessSessionData)
@@ -62,19 +60,18 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 			//新闻相关
 			newsProtected := protected.Group("")
 			//newsProtected.Use(middleware.newsValid()) //这里实现的思路是把对应的 guid 区分开，检测天数，以免看太过时的新闻
-			
+
 			{
-			
+
 				newsProtected.GET("/news/", h.GetNews)
 				newsProtected.GET("/news", h.GetNews)
 				newsProtected.GET("/news/:id", h.GetNewsDetail)
 				newsProtected.GET("/news/:id/", h.GetNewsDetail)
 			}
 
-		
 		}
 
 	}
-	
+
 	return h
 }

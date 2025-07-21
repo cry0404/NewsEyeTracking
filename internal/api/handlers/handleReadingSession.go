@@ -1,5 +1,9 @@
 package handlers
+// 这里结束会话就必须先结束缓存中的会话，然后再更新数据库
 
+// 中间只需要更新 redis 的 TTL 即可， 可以合并在心跳包逻辑里，只要收到心跳包就更新
+// 两个会话， 用户会话和阅读会话中的内容
+// 以及我们需要考虑每次接收到数据就更新 redis 中的 TTl
 import (
 	"NewsEyeTracking/internal/models"
 	"NewsEyeTracking/internal/utils"
