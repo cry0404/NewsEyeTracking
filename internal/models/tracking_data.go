@@ -9,23 +9,23 @@ import (
 
 // EyeEvent 眼动事件数据
 type EyeEvent struct {
-	ID int `json:"id"` // 元素ID（分词或组件的唯一标识）
-	X  int `json:"x"`  // X坐标
-	Y  int `json:"y"`  // Y坐标
+	ID string `json:"id"` // 元素ID（分词或组件的唯一标识）
+	X  float32 `json:"x"`  // X坐标
+	Y  float32 `json:"y"`  // Y坐标
 }
 
 // ClickEvent 点击事件数据
 type ClickEvent struct {
-	Timestamp int64  `json:"timestamp"`           // Unix时间戳（毫秒）
-	ID        int    `json:"id"`                  // 点击目标的元素ID
-	X         int    `json:"x"`                   // 点击的X坐标
-	Y         int    `json:"y"`                   // 点击的Y坐标
+	Timestamp time.Time  `json:"timestamp"`           // Unix时间戳（毫秒）
+	ID        string    `json:"id"`                  // 点击目标的元素ID
+	X         float32    `json:"x"`                   // 点击的X坐标
+	Y         float32    `json:"y"`                   // 点击的Y坐标
 }
 
 // ScrollEvent 滚动事件数据
 type ScrollEvent struct {
-	Timestamp int64 `json:"timestamp"` // Unix时间戳（毫秒）
-	DeltaY    int   `json:"delta_y"`   // 垂直滚动距离（正数向下，负数向上）
+	Timestamp time.Time `json:"timestamp"` // Unix时间戳（毫秒）
+	DeltaY    float32  `json:"delta_y"`   // 垂直滚动距离（正数向下，负数向上）
 }
 
 // TrackingData 追踪数据容器
@@ -119,7 +119,7 @@ func (td *TrackingData) GetTotalEvents() int {
 }
 
 // AddEyeEvent 添加眼动事件
-func (td *TrackingData) AddEyeEvent(id, x, y int) {
+func (td *TrackingData) AddEyeEvent(id string, x, y float32) {
 	td.EyeEvents = append(td.EyeEvents, EyeEvent{
 		ID: id,
 		X:  x,
@@ -128,7 +128,7 @@ func (td *TrackingData) AddEyeEvent(id, x, y int) {
 }
 
 // AddClickEvent 添加点击事件
-func (td *TrackingData) AddClickEvent(timestamp int64, id, x, y int) {
+func (td *TrackingData) AddClickEvent(timestamp time.Time, id string, x, y float32) {
 	td.ClickEvents = append(td.ClickEvents, ClickEvent{
 		Timestamp: timestamp,
 		ID:        id,
@@ -138,7 +138,7 @@ func (td *TrackingData) AddClickEvent(timestamp int64, id, x, y int) {
 }
 
 // AddScrollEvent 添加滚动事件
-func (td *TrackingData) AddScrollEvent(timestamp int64, deltaY int) {
+func (td *TrackingData) AddScrollEvent(timestamp time.Time, deltaY float32) {
 	td.ScrollEvents = append(td.ScrollEvents, ScrollEvent{
 		Timestamp: timestamp,
 		DeltaY:    deltaY,
