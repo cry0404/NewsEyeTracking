@@ -29,7 +29,7 @@ type User struct {
 
 	// 新闻阅读习惯
 	WeeklyReadingHours  *int    `json:"weekly_reading_hours" db:"weekly_reading_hours"`
-	PrimaryNewsPlatform *string `json:"primary_news_platform" db:"primary_news_platform"`
+	PrimaryNewsPlatforms []string `json:"primary_news_platforms" db:"primary_news_platforms"`
 	IsActiveSearcher    bool    `json:"is_active_searcher" db:"is_active_searcher"`
 
 	// 视觉相关
@@ -80,12 +80,12 @@ type UserRequest struct {
 	Gender         *string `json:"gender" binding:"omitempty,oneof=男 女" validate:"omitempty,oneof=男 女"`
 	Age            *int    `json:"age" binding:"omitempty,min=16,max=100" validate:"omitempty,min=16,max=100"`
 	DateOfBirth    *string `json:"date_of_birth" binding:"omitempty" validate:"omitempty,datetime=2006-01-02"`
-	EducationLevel *string `json:"education_level" binding:"omitempty,oneof='高中及以下' '本科' '硕士' '博士及以上'" validate:"omitempty,oneof='高中及以下' '本科' '硕士' '博士及以上'"`
+	EducationLevel *string `json:"education_level" binding:"omitempty,oneof='小学' '初中' '高中' '大专' '本科' '硕士' '博士'" validate:"omitempty,oneof='小学' '初中' '高中' '大专' '本科' '硕士' '博士'"`
 	Residence      *string `json:"residence" binding:"omitempty,min=1,max=100" validate:"omitempty,min=1,max=100"`
 
 	// 新闻阅读习惯
-	WeeklyReadingHours  *int    `json:"weekly_reading_hours" binding:"omitempty,oneof=1 2 3 4" validate:"omitempty,oneof=1 2 3 4"`
-	PrimaryNewsPlatform *string `json:"primary_news_platform" binding:"omitempty,oneof='微信新闻' '今日头条' '新浪微博'" validate:"omitempty,oneof='微信新闻' '今日头条' '新浪微博'"`
+	WeeklyReadingHours  *int    `json:"weekly_reading_hours" binding:"omitempty,oneof=1 2 3 4 5 6 7" validate:"omitempty,oneof=1 2 3 4 5 6 7"`
+	PrimaryNewsPlatforms []string `json:"primary_news_platforms" binding:"omitempty" validate:"omitempty"`
 	IsActiveSearcher    *bool   `json:"is_active_searcher" binding:"omitempty" validate:"omitempty"`
 
 	// 视觉相关
@@ -109,7 +109,7 @@ type UserProfileResponse struct {
 	EducationLevel      *string          `json:"education_level"`
 	Residence           *string          `json:"residence"`
 	WeeklyReadingHours  *int             `json:"weekly_reading_hours"`
-	PrimaryNewsPlatform *string          `json:"primary_news_platform"`
+	PrimaryNewsPlatforms []string         `json:"primary_news_platforms"`
 	IsActiveSearcher    bool             `json:"is_active_searcher"`
 	ExperimentConfig    ExperimentConfig `json:"experiment_config"`
 	CreatedAt           time.Time        `json:"created_at"`
@@ -122,21 +122,34 @@ const (
 	GenderFemale = "女"
 
 	// 学历
-	EducationHighSchoolOrBelow = "高中及以下"
-	EducationBachelor          = "本科"
-	EducationMaster            = "硕士"
-	EducationDoctorOrAbove     = "博士及以上"
+	EducationPrimary     = "小学"
+	EducationMiddle      = "初中"
+	EducationHighSchool  = "高中"
+	EducationJuniorCollege = "大专"
+	EducationBachelor    = "本科"
+	EducationMaster      = "硕士"
+	EducationDoctor      = "博士"
 
 	// 每周阅读时长映射
-	ReadingHoursBelow10 = 1 // 10小时以下
-	ReadingHours10To20  = 2 // 10-20小时
-	ReadingHours30      = 3 // 30小时
-	ReadingHours30AndUp = 4 // 30小时及以上
+	ReadingHours1  = 1 // 1小时
+	ReadingHours3  = 2 // 3小时
+	ReadingHours5  = 3 // 5小时
+	ReadingHours10 = 4 // 10小时
+	ReadingHours20 = 5 // 20小时
+	ReadingHours30 = 6 // 30小时
+	ReadingHours40AndUp = 7 // 40小时及以上
 
 	// 新闻平台
-	PlatformWeChat  = "微信新闻"
-	PlatformToutiao = "今日头条"
-	PlatformWeibo   = "新浪微博"
+	PlatformToutiao     = "今日头条"
+	PlatformTencentNews = "腾讯新闻"
+	PlatformSinaNews    = "新浪新闻"
+	PlatformSohuNews    = "搜狐新闻"
+	PlatformNeteaseNews = "网易新闻"
+	PlatformPhoenixNews = "凤凰新闻"
+	PlatformPeoplesDaily = "人民日报"
+	PlatformCCTVNews     = "央视新闻"
+	PlatformXinhuaNet    = "新华网"
+	PlatformGuangmingDaily = "光明日报"
 
 	// 视力状况
 	VisionFarsighted  = "远视"
@@ -147,14 +160,20 @@ const (
 // GetReadingHoursText 根据数值获取阅读时长文本
 func GetReadingHoursText(hours int) string {
 	switch hours {
-	case ReadingHoursBelow10:
-		return "10小时以下"
-	case ReadingHours10To20:
-		return "10-20小时"
+	case ReadingHours1:
+		return "1小时"
+	case ReadingHours3:
+		return "3小时"
+	case ReadingHours5:
+		return "5小时"
+	case ReadingHours10:
+		return "10小时"
+	case ReadingHours20:
+		return "20小时"
 	case ReadingHours30:
 		return "30小时"
-	case ReadingHours30AndUp:
-		return "30小时及以上"
+	case ReadingHours40AndUp:
+		return "40小时及以上"
 	default:
 		return "未知"
 	}
@@ -162,7 +181,7 @@ func GetReadingHoursText(hours int) string {
 
 // ValidateReadingHours 验证阅读时长是否有效
 func ValidateReadingHours(hours int) bool {
-	return hours >= ReadingHoursBelow10 && hours <= ReadingHours30AndUp
+	return hours >= ReadingHours1 && hours <= ReadingHours40AndUp
 }
 
 // RegisterRequest 用户注册请求的别名，保持向后兼容

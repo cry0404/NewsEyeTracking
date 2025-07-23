@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 	"os"
 
@@ -60,7 +61,7 @@ func (s *userService) GetUserByID(ctx context.Context, userID string) (*models.U
 		EducationLevel:      nullStringToPtr(User.EducationLevel),
 		Residence:           nullStringToPtr(User.Residence),
 		WeeklyReadingHours:  nullInt32ToPtr(User.WeeklyReadingHours),
-		PrimaryNewsPlatform: nullStringToPtr(User.PrimaryNewsPlatform),
+		PrimaryNewsPlatforms: stringToSlice(nullStringToPtr(User.PrimaryNewsPlatform)),
 		IsActiveSearcher:    User.IsActiveSearcher.Bool,
 		IsColorblind:        User.IsColorblind.Bool,
 		VisionStatus:        nullStringToPtr(User.VisionStatus),
@@ -96,7 +97,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID string, req *models
 		EducationLevel:      buildNullStringFromPtr(req.EducationLevel),
 		Residence:           buildNullStringFromPtr(req.Residence),
 		WeeklyReadingHours:  buildNullInt32FromPtr(req.WeeklyReadingHours),
-		PrimaryNewsPlatform: buildNullStringFromPtr(req.PrimaryNewsPlatform),
+		PrimaryNewsPlatform: buildNullStringFromSlice(req.PrimaryNewsPlatforms),
 		IsActiveSearcher:    buildNullBoolFromPtr(req.IsActiveSearcher),
 		IsColorblind:        buildNullBoolFromPtr(req.IsColorblind),
 		VisionStatus:        buildNullStringFromPtr(req.VisionStatus),
@@ -123,7 +124,7 @@ if err == sql.ErrNoRows {
 				EducationLevel:      buildNullStringFromPtr(req.EducationLevel),
 				Residence:           buildNullStringFromPtr(req.Residence),
 				WeeklyReadingHours:  buildNullInt32FromPtr(req.WeeklyReadingHours),
-				PrimaryNewsPlatform: buildNullStringFromPtr(req.PrimaryNewsPlatform),
+				PrimaryNewsPlatform: buildNullStringFromSlice(req.PrimaryNewsPlatforms),
 				IsActiveSearcher:    buildNullBoolFromPtr(req.IsActiveSearcher),
 				IsColorblind:        buildNullBoolFromPtr(req.IsColorblind),
 				VisionStatus:        buildNullStringFromPtr(req.VisionStatus),
@@ -151,7 +152,7 @@ if err == sql.ErrNoRows {
 		EducationLevel:      nullStringToPtr(updatedUser.EducationLevel),
 		Residence:           nullStringToPtr(updatedUser.Residence),
 		WeeklyReadingHours:  nullInt32ToPtr(updatedUser.WeeklyReadingHours),
-		PrimaryNewsPlatform: nullStringToPtr(updatedUser.PrimaryNewsPlatform),
+		PrimaryNewsPlatforms: stringToSlice(nullStringToPtr(updatedUser.PrimaryNewsPlatform)),
 		IsActiveSearcher:    updatedUser.IsActiveSearcher.Bool,
 		IsColorblind:        updatedUser.IsColorblind.Bool,
 		VisionStatus:        nullStringToPtr(updatedUser.VisionStatus),
@@ -252,6 +253,23 @@ func buildNullBoolFromPtr(value *bool) sql.NullBool {
 		return sql.NullBool{Bool: *value, Valid: true}
 	}
 	return sql.NullBool{Valid: false}
+}
+
+// 新增的转换函数：处理字符串数组与单一字符串之间的转换
+// 将字符串数组转换为逗号分隔的字符串（用于存储到数据库）
+func buildNullStringFromSlice(values []string) sql.NullString {
+	if len(values) > 0 {
+		return sql.NullString{String: strings.Join(values, ","), Valid: true}
+	}
+	return sql.NullString{Valid: false}
+}
+
+// 将逗号分隔的字符串转换为字符串数组（用于从数据库读取）
+func stringToSlice(value *string) []string {
+	if value == nil || *value == "" {
+		return []string{}
+	}
+	return strings.Split(*value, ",")
 }
 
 /*
