@@ -49,10 +49,12 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 	if err != nil {
 		return nil, fmt.Errorf("暂时无法获取到内部的测试信息: %w", err)
 	}
+	//var hasMoreInformation bool
+	//这里判断是否需要增加额外信息
 
 /*
 	var hasRecommend bool
-	// var hasMoreInformation bool
+	
 
 	hasRecommend = abConfig.HasRecommend.Bool
 
@@ -73,6 +75,9 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 
 	articles, err := s.queries.GetArticlesByGUID(ctx, articleID)
 
+	if err != nil {
+		return nil, fmt.Errorf("从数据库查询对应文章错误: %w", err)
+	}
 	newsItems := make([]models.NewsListItem, 0, len(articles))
 	newsGUIDs := make([]string, 0, len(articles))
 	for _, article := range articles {

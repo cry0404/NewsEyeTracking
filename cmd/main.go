@@ -6,6 +6,7 @@ import (
 	"NewsEyeTracking/internal/service"
 	"NewsEyeTracking/pkg/logger"
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -38,6 +39,16 @@ func main() {
 		logger.Logger.Fatal("DB_URL环境变量未设置")
 	}
 
+	// 验证上传服务所需的环境变量
+	if err := validateUploadEnvVars(); err != nil {
+		logger.Logger.Fatal("上传服务环境变量验证失败", zap.Error(err))
+	}
+
+	// 创建上传服务所需的目录
+	if err := createUploadDirectories(); err != nil {
+		logger.Logger.Fatal("创建上传目录失败", zap.Error(err))
+	}
+
 	// 连接数据库
 	db, err := database.Connect(dbURL)
 	if err != nil {
@@ -54,7 +65,17 @@ func main() {
 
 	services := service.NewServices(db, redisClient)
 
-	
+	// 创建上传服务的上下文
+	uploadCtx, uploadCancel := context.WithCancel(context.Background())
+	defer uploadCancel()
+
+	// 启动上传服务监控
+	if err := services.Upload.StartMonitoring(uploadCtx); err != nil {
+		logger.Logger.Error("启动上传服务失败", zap.Error(err))
+	} else {
+		logger.Logger.Info("上传服务已启动")
+	}
+
 	r := gin.New()
 	
 
@@ -93,6 +114,7 @@ func main() {
 
 	// 关闭服务之前，先停止所有后台任务并刷新缓存
 	log.Println("正在保存缓存数据...")
+	uploadCancel()        // 停止上传服务
 	services.News.Stop() // 停止新闻服务的后台任务
 	h.Stop()              // 停止 handlers 的统一缓存管理任务
 	log.Println("缓存数据已保存")
@@ -102,4 +124,46 @@ func main() {
 	}
 
 	log.Println("服务器已退出")
+}
+
+// validateUploadEnvVars 验证上传服务所需的环境变量
+func validateUploadEnvVars() error {
+	requiredVars := []string{
+		"ACCESS_ID",
+		"ACCESS_KEY",
+		"OSS_REGION",
+		"OSS_BUCKET_NAME",
+		"UPLOAD_WATCH_DIR",
+		"UPLOAD_TEMP_DIR",
+		"UPLOAD_MAX_FILES",
+		"UPLOAD_MAX_SIZE",
+		"UPLOAD_CHECK_INTERVAL",
+	}
+
+	for _, varName := range requiredVars {
+		if value := os.Getenv(varName); value == "" {
+			return fmt.Errorf("环境变量 %s 未设置", varName)
+		}
+	}
+
+	return nil
+}
+
+// createUploadDirectories 创建上传服务所需的目录
+func createUploadDirectories() error {
+	watchDir := os.Getenv("UPLOAD_WATCH_DIR")
+	tempDir := os.Getenv("UPLOAD_TEMP_DIR")
+
+	// 创建监控目录
+	if err := os.MkdirAll(watchDir, 0755); err != nil {
+		return fmt.Errorf("创建监控目录 %s 失败: %v", watchDir, err)
+	}
+
+	// 创建临时目录
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("创建临时目录 %s 失败: %v", tempDir, err)
+	}
+
+	log.Printf("上传目录创建成功 - 监控目录: %s, 临时目录: %s", watchDir, tempDir)
+	return nil
 }

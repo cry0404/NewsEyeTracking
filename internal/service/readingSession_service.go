@@ -25,6 +25,8 @@ type SessionService interface {
 	EndReadingSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error
 	// GetSessionByID 根据ID获取会话信息（用于验证会话状态）
 	GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*db.ReadingSession, error)
+	// GetUserActiveSessions 获取用户所有活跃的阅读会话
+	GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]db.ReadingSession, error)
 	// CheckActiveReadingSession 检查用户是否已有活跃的阅读会话（单会话限制）
 	//CheckActiveReadingSession(ctx context.Context, userID string) error
 }
@@ -206,6 +208,15 @@ func (s *sessionService) GetSessionByID(ctx context.Context, sessionID uuid.UUID
 		return nil, err
 	}
 	return &session, nil
+}
+
+// GetUserActiveSessions 获取用户所有活跃的阅读会话
+func (s *sessionService) GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]db.ReadingSession, error) {
+	activeSessions, err := s.queries.GetUserActiveSessions(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("获取用户活跃阅读会话失败: %w", err)
+	}
+	return activeSessions, nil
 }
 
 /*

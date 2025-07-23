@@ -4,19 +4,29 @@ import (
 	"NewsEyeTracking/internal/api/handlers"
 	"NewsEyeTracking/internal/api/middleware"
 	"NewsEyeTracking/internal/service"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handlers {
 	//全局处都需要使用到的中间件就定义到 middleware
-
+	ginMode := os.Getenv("GIN_MODE")
+	if ginMode == "" {
+		ginMode = gin.DebugMode
+	}
+	gin.SetMode(ginMode)
+//    loglevel := os.Getenv("LOG_LEVEL")
 	router.Use(middleware.ErrorHandler())
 
 	router.Use(middleware.CORS())
-
+	
+	// 基础日志中间件
 	router.Use(middleware.Logger())
-	router.Use(middleware.SessionLog())
+
+	//router.Use(middleware.DevLogger())
+	//router.Use(middleware.SessionLog())
+	
 	h := handlers.NewHandlers(services)
 
 	v1 := router.Group("/api/v1")
@@ -42,7 +52,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 			protected.GET("/auth/profile/", h.GetProfile)
 			protected.POST("/auth/profile", h.UpdateProfile)
 			protected.POST("/auth/profile/", h.UpdateProfile)
-
+			protected.POST("/users/end",h.EndUserSession)
 			// 用户会话管理（简化版）
 			//protected.POST("/session/init", h.InitUserSession)           // 整体的启动，应该整合在 code 路由中去，而且 init 中就应该判断会话状态
 			//      // 统一数据上传接口，但这里是文章页的逻辑来
