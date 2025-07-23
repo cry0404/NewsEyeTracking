@@ -42,7 +42,7 @@ func NewUploader(config Config) *FileUploader {
 
 // Start 启动上传器
 func (u *FileUploader) Start(ctx context.Context) error {
-	// 初始化OSS客户端
+
 	if err := u.initOSSClient(); err != nil {
 		return fmt.Errorf("初始化OSS客户端失败: %v", err)
 	}
@@ -93,7 +93,7 @@ func (u *FileUploader) initOSSClient() error {
 		return fmt.Errorf("请设置 ACCESS_ID 和 ACCESS_KEY 环境变量")
 	}
 
-	region := "cn-shenzhen" 
+	region := os.Getenv("OSS_REGION")
 	provider := credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret)
 	cfg := oss.LoadDefaultConfig().WithCredentialsProvider(provider).WithRegion(region)
 	u.ossClient = oss.NewClient(cfg)
@@ -247,7 +247,7 @@ func (u *FileUploader) addFileToZip(zipWriter *zip.Writer, filename string) erro
 
 // uploadToOSS 上传到阿里云OSS
 func (u *FileUploader) uploadToOSS(filePath, objectName string) error {
-	bucketName := "newseyetrackingtest" // 可以从环境变量读取
+bucketName := os.Getenv("OSS_BUCKET_NAME")
 
 	putRequest := &oss.PutObjectRequest{
 		Bucket: oss.Ptr(bucketName),

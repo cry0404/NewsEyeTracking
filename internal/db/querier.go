@@ -6,11 +6,14 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 type Querier interface {
+	// 批量清理所有过期会话（定时任务使用）
+	CleanupExpiredSessions(ctx context.Context, dollar_1 int32) error
 	// 创建一个新的会话，相当于打开了一篇新的网页，开启了新的事件
 	// 初始的 endtime 应该是为空的, oss 存储路径应该暂定, 这里的 starttime 应该是有的
 	// 但是 endtime 应该是待定的，由前端发回来的信息， sessionid 作为打包区分，
@@ -21,33 +24,45 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// 创建新的用户会话
 	CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error
+	// 手动结束会话（用于登出等场景）
+	EndUserSession(ctx context.Context, arg EndUserSessionParams) error
 	// 验证邀请码并自动增加使用次数计数, 这里就算没注册也应该算使用了
 	// 如果 code 存在，就增加 count，无论 is_used 是什么
 	FindCodeAndIncrementCount(ctx context.Context, code string) (FindCodeAndIncrementCountRow, error)
 	// 根据邀请码ID获取A/B测试配置，但是这里也许该再解耦一下，毕竟 has_more infomation 应该是只需要查询一次的，没必要一直查询
 	GetABTestConfigByInviteCodeID(ctx context.Context, id uuid.UUID) (GetABTestConfigByInviteCodeIDRow, error)
+	// 根据用户ID获取活跃会话
+	GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (GetActiveUserSessionByUserIDRow, error)
 	// 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
 	GetArticleByGUID(ctx context.Context, guid string) (GetArticleByGUIDRow, error)
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
+	GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]GetArticlesByGUIDRow, error)
 	// 获取邀请码ID 和 email（注册时使用）
 	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	// 获取新的文章， 这里需要根据推荐算法，所以这里筛选出来的接口还应该需要接到推荐算法上
 	GetNewArticles(ctx context.Context, arg GetNewArticlesParams) ([]FeedItem, error)
+	// 随机获取新闻文章
+	GetRandomArticles(ctx context.Context, arg GetRandomArticlesParams) ([]FeedItem, error)
 	// 会话查询
 	GetSessionByID(ctx context.Context, id uuid.UUID) (ReadingSession, error)
 	GetUserABTestConfig(ctx context.Context, id uuid.UUID) (GetUserABTestConfigRow, error)
 	GetUserActiveSessions(ctx context.Context, userID uuid.UUID) ([]ReadingSession, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
-	// 会话统计查询
-	GetUserSessionStats(ctx context.Context, userID uuid.UUID) ([]GetUserSessionStatsRow, error)
+	// 根据会话ID获取会话信息
+	GetUserSessionByID(ctx context.Context, id uuid.UUID) (GetUserSessionByIDRow, error)
+	// 获取用户的所有会话（包括已结束的）
+	GetUserSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]GetUserSessionsByUserIDRow, error)
 	// A/B 测试相关查询
 	GetUserWithInviteCode(ctx context.Context, id uuid.UUID) (GetUserWithInviteCodeRow, error)
+	IsInviteCodeUsed(ctx context.Context, code string) (sql.NullBool, error)
 	// 只查询邀请码信息（不增加计数，用于纯查询场景）
 	MarkInviteCodeAsUsed(ctx context.Context, code string) error
-	// 会话更新操作
-	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) (ReadingSession, error)
+	// 更新心跳时间并自动检查过期（主要使用的心跳更新方法）
+	UpdateHeartbeatWithExpireCheck(ctx context.Context, arg UpdateHeartbeatWithExpireCheckParams) error
+	// 只是需要记录结束时间就可以了，不需要返回
+	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

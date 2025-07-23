@@ -22,7 +22,7 @@ CREATE TABLE feed_items (
     link VARCHAR(512) NOT NULL,
     guid VARCHAR(512) NOT NULL UNIQUE, -- 文章唯一标识
     author VARCHAR(255),
-    keywords VARCHAR(255) ARRAY,
+    keywords VARCHAR(255) ARRAY, -- 作为
     published_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

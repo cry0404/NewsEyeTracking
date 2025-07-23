@@ -37,6 +37,15 @@ func (s *authService) ValidateInviteCode(ctx context.Context, code string) (*mod
 
 	// 不需要再次检查 IsUsed，因为 SQL 查询已经过滤了已使用的邀请码
 	// 将数据库模型转换为业务模型
+	isused, _ := s.queries.IsInviteCodeUsed(ctx, code)
+	
+	if ! isused.Bool {
+		err  = s.queries.MarkInviteCodeAsUsed(ctx, code)
+		if err != nil {
+			return nil, fmt.Errorf("数据库发生未知错误")
+		}
+	}
+
 	inviteCode := &models.InviteCode{
 		ID:                 codeInfo.ID,
 		Code:               codeInfo.Code,
@@ -45,3 +54,5 @@ func (s *authService) ValidateInviteCode(ctx context.Context, code string) (*mod
 
 	return inviteCode, nil
 }
+
+

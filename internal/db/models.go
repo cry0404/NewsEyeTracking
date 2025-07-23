@@ -24,17 +24,21 @@ type Feed struct {
 }
 
 type FeedItem struct {
-	ID          int32          `json:"id"`
-	FeedID      sql.NullInt32  `json:"feed_id"`
-	Title       string         `json:"title"`
+	ID     int32         `json:"id"`
+	FeedID sql.NullInt32 `json:"feed_id"`
+	// 文章标题（支持分词标签）
+	Title string `json:"title"`
+	// 文章描述（支持分词标签）
 	Description sql.NullString `json:"description"`
-	Content     sql.NullString `json:"content"`
-	Link        string         `json:"link"`
-	Guid        string         `json:"guid"`
-	Author      sql.NullString `json:"author"`
-	Keywords    []string       `json:"keywords"`
-	PublishedAt sql.NullTime   `json:"published_at"`
-	CreatedAt   sql.NullTime   `json:"created_at"`
+	// 文章内容（支持分词标签）
+	Content sql.NullString `json:"content"`
+	Link    string         `json:"link"`
+	Guid    string         `json:"guid"`
+	Author  sql.NullString `json:"author"`
+	// 关键词数组（通过分词算法提取）
+	Keywords    []string     `json:"keywords"`
+	PublishedAt sql.NullTime `json:"published_at"`
+	CreatedAt   sql.NullTime `json:"created_at"`
 }
 
 type InviteCode struct {
@@ -49,14 +53,12 @@ type InviteCode struct {
 }
 
 type ReadingSession struct {
-	ID                uuid.UUID             `json:"id"`
-	UserID            uuid.UUID             `json:"user_id"`
-	ArticleID         int32                 `json:"article_id"`
-	StartTime         sql.NullTime          `json:"start_time"`
-	EndTime           sql.NullTime          `json:"end_time"`
-	DeviceInfo        pqtype.NullRawMessage `json:"device_info"`
-	SessionDurationMs sql.NullInt64         `json:"session_duration_ms"`
-	UserSessionID     uuid.NullUUID         `json:"user_session_id"`
+	ID         uuid.UUID             `json:"id"`
+	UserID     uuid.UUID             `json:"user_id"`
+	ArticleID  string                `json:"article_id"`
+	StartTime  sql.NullTime          `json:"start_time"`
+	EndTime    sql.NullTime          `json:"end_time"`
+	DeviceInfo pqtype.NullRawMessage `json:"device_info"`
 }
 
 type User struct {

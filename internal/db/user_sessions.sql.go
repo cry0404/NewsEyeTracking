@@ -8,12 +8,29 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
 
+const cleanupExpiredSessions = `-- name: CleanupExpiredSessions :exec
+UPDATE user_sessions 
+SET 
+    end_time = COALESCE(end_time, NOW()),
+    is_active = FALSE
+WHERE 
+    is_active = TRUE 
+    AND EXTRACT(EPOCH FROM (NOW() - last_heartbeat)) > $1::integer
+`
+
+// 批量清理所有过期会话（定时任务使用）
+func (q *Queries) CleanupExpiredSessions(ctx context.Context, dollar_1 int32) error {
+	_, err := q.db.ExecContext(ctx, cleanupExpiredSessions, dollar_1)
+	return err
+}
+
 const createUserSession = `-- name: CreateUserSession :exec
-INSERT INTO user_sessions (
+INSERT INTO user_sessions ( --这里的 id 其实就是 session id
     id, user_id, start_time, last_heartbeat, is_active
 ) VALUES (
     $1, $2, $3, $4, $5
@@ -37,5 +54,166 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 		arg.LastHeartbeat,
 		arg.IsActive,
 	)
+	return err
+}
+
+const endUserSession = `-- name: EndUserSession :exec
+UPDATE user_sessions 
+SET 
+    end_time = $1,
+    is_active = FALSE
+WHERE id = $2
+`
+
+type EndUserSessionParams struct {
+	EndTime sql.NullTime `json:"end_time"`
+	ID      uuid.UUID    `json:"id"`
+}
+
+// 手动结束会话（用于登出等场景）
+func (q *Queries) EndUserSession(ctx context.Context, arg EndUserSessionParams) error {
+	_, err := q.db.ExecContext(ctx, endUserSession, arg.EndTime, arg.ID)
+	return err
+}
+
+const getActiveUserSessionByUserID = `-- name: GetActiveUserSessionByUserID :one
+SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
+FROM user_sessions 
+WHERE user_id = $1 AND is_active = TRUE 
+ORDER BY last_heartbeat DESC 
+LIMIT 1
+`
+
+type GetActiveUserSessionByUserIDRow struct {
+	ID            uuid.UUID    `json:"id"`
+	UserID        uuid.UUID    `json:"user_id"`
+	StartTime     sql.NullTime `json:"start_time"`
+	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
+	IsActive      sql.NullBool `json:"is_active"`
+	EndTime       sql.NullTime `json:"end_time"`
+	CreatedDate   sql.NullTime `json:"created_date"`
+}
+
+// 根据用户ID获取活跃会话
+func (q *Queries) GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (GetActiveUserSessionByUserIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getActiveUserSessionByUserID, userID)
+	var i GetActiveUserSessionByUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.StartTime,
+		&i.LastHeartbeat,
+		&i.IsActive,
+		&i.EndTime,
+		&i.CreatedDate,
+	)
+	return i, err
+}
+
+const getUserSessionByID = `-- name: GetUserSessionByID :one
+SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
+FROM user_sessions 
+WHERE id = $1
+`
+
+type GetUserSessionByIDRow struct {
+	ID            uuid.UUID    `json:"id"`
+	UserID        uuid.UUID    `json:"user_id"`
+	StartTime     sql.NullTime `json:"start_time"`
+	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
+	IsActive      sql.NullBool `json:"is_active"`
+	EndTime       sql.NullTime `json:"end_time"`
+	CreatedDate   sql.NullTime `json:"created_date"`
+}
+
+// 根据会话ID获取会话信息
+func (q *Queries) GetUserSessionByID(ctx context.Context, id uuid.UUID) (GetUserSessionByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserSessionByID, id)
+	var i GetUserSessionByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.StartTime,
+		&i.LastHeartbeat,
+		&i.IsActive,
+		&i.EndTime,
+		&i.CreatedDate,
+	)
+	return i, err
+}
+
+const getUserSessionsByUserID = `-- name: GetUserSessionsByUserID :many
+SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
+FROM user_sessions 
+WHERE user_id = $1 
+ORDER BY start_time DESC
+`
+
+type GetUserSessionsByUserIDRow struct {
+	ID            uuid.UUID    `json:"id"`
+	UserID        uuid.UUID    `json:"user_id"`
+	StartTime     sql.NullTime `json:"start_time"`
+	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
+	IsActive      sql.NullBool `json:"is_active"`
+	EndTime       sql.NullTime `json:"end_time"`
+	CreatedDate   sql.NullTime `json:"created_date"`
+}
+
+// 获取用户的所有会话（包括已结束的）
+func (q *Queries) GetUserSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]GetUserSessionsByUserIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserSessionsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserSessionsByUserIDRow
+	for rows.Next() {
+		var i GetUserSessionsByUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.StartTime,
+			&i.LastHeartbeat,
+			&i.IsActive,
+			&i.EndTime,
+			&i.CreatedDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateHeartbeatWithExpireCheck = `-- name: UpdateHeartbeatWithExpireCheck :exec
+UPDATE user_sessions 
+SET 
+    last_heartbeat = $1::timestamp,
+    end_time = CASE 
+        WHEN EXTRACT(EPOCH FROM ($1::timestamp - last_heartbeat)) > $2::integer THEN $1::timestamp
+        ELSE end_time 
+    END,
+    is_active = CASE 
+        WHEN EXTRACT(EPOCH FROM ($1::timestamp - last_heartbeat)) > $2::integer THEN FALSE
+        ELSE is_active 
+    END
+WHERE id = $3 AND is_active = TRUE
+`
+
+type UpdateHeartbeatWithExpireCheckParams struct {
+	Column1 time.Time `json:"column_1"`
+	Column2 int32     `json:"column_2"`
+	ID      uuid.UUID `json:"id"`
+}
+
+// 更新心跳时间并自动检查过期（主要使用的心跳更新方法）
+func (q *Queries) UpdateHeartbeatWithExpireCheck(ctx context.Context, arg UpdateHeartbeatWithExpireCheckParams) error {
+	_, err := q.db.ExecContext(ctx, updateHeartbeatWithExpireCheck, arg.Column1, arg.Column2, arg.ID)
 	return err
 }

@@ -9,6 +9,9 @@ INSERT INTO reading_sessions (
 )VALUES(
     uuid_generate_v4(), $1, $2, $3, $4
 ) RETURNING *;
+-- 只是需要记录结束时间就可以了，不需要返回
+-- name: UpdateSessionEndTime :exec
+UPDATE reading_sessions SET end_time = $2 WHERE id = $1;
 
 -- 会话查询
 -- name: GetSessionByID :one
@@ -17,20 +20,6 @@ SELECT * FROM reading_sessions WHERE id = $1;
 -- name: GetUserActiveSessions :many
 SELECT * FROM reading_sessions WHERE user_id = $1 AND end_time IS NULL;
 
--- 会话更新操作
--- name: UpdateSessionEndTime :one
-UPDATE reading_sessions SET
-    end_time = $2,
-    session_duration_ms = EXTRACT(EPOCH FROM ($2 - start_time)) * 1000
-WHERE id = $1 RETURNING *;
 
--- 会话统计查询
--- name: GetUserSessionStats :many
-SELECT 
-    article_id,
-    COUNT(*) as session_count,
-    AVG(session_duration_ms) as avg_duration_ms,
-    SUM(event_count) as total_events
-FROM reading_sessions 
-WHERE user_id = $1 AND end_time IS NOT NULL
-GROUP BY article_id;
+
+

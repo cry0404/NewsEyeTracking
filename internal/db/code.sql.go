@@ -76,6 +76,17 @@ func (q *Queries) GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetI
 	return i, err
 }
 
+const isInviteCodeUsed = `-- name: IsInviteCodeUsed :one
+SELECT is_used FROM invite_codes WHERE code = $1
+`
+
+func (q *Queries) IsInviteCodeUsed(ctx context.Context, code string) (sql.NullBool, error) {
+	row := q.db.QueryRowContext(ctx, isInviteCodeUsed, code)
+	var is_used sql.NullBool
+	err := row.Scan(&is_used)
+	return is_used, err
+}
+
 const markInviteCodeAsUsed = `-- name: MarkInviteCodeAsUsed :exec
 UPDATE invite_codes 
 SET is_used = TRUE 
