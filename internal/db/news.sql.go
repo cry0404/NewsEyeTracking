@@ -80,6 +80,56 @@ func (q *Queries) GetArticleByID(ctx context.Context, id int32) (GetArticleByIDR
 	return i, err
 }
 
+const getArticlesByGUID = `-- name: GetArticlesByGUID :many
+SELECT id, title, description, content, link, guid, author, published_at 
+FROM feed_items 
+WHERE guid = ANY($1::text[])
+ORDER BY published_at DESC
+`
+
+type GetArticlesByGUIDRow struct {
+	ID          int32          `json:"id"`
+	Title       string         `json:"title"`
+	Description sql.NullString `json:"description"`
+	Content     sql.NullString `json:"content"`
+	Link        string         `json:"link"`
+	Guid        string         `json:"guid"`
+	Author      sql.NullString `json:"author"`
+	PublishedAt sql.NullTime   `json:"published_at"`
+}
+
+func (q *Queries) GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]GetArticlesByGUIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getArticlesByGUID, pq.Array(dollar_1))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetArticlesByGUIDRow
+	for rows.Next() {
+		var i GetArticlesByGUIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Content,
+			&i.Link,
+			&i.Guid,
+			&i.Author,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNewArticles = `-- name: GetNewArticles :many
 SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
 WHERE published_at > $1  -- 这里每天根据推荐时间选取

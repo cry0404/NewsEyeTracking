@@ -5,6 +5,12 @@ WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2;
 
+-- name: GetArticlesByGUID :many
+SELECT id, title, description, content, link, guid, author, published_at 
+FROM feed_items 
+WHERE guid = ANY($1::text[])
+ORDER BY published_at DESC;
+
 -- 随机获取新闻文章
 -- name: GetRandomArticles :many
 SELECT * FROM feed_items

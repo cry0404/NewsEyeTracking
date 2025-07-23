@@ -3,13 +3,13 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
-	
 	"io"
-	"log"
 	"strings"
 	"time"
 
+	"NewsEyeTracking/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // SessionLogMiddleware 专用于记录session相关请求的中间件
@@ -27,20 +27,27 @@ func SessionLog() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 		userAgent := c.GetHeader("User-Agent")
 		
-		// 记录请求头信息
-		log.Printf("[SESSION_LOG] === 开始处理Session请求 ===")
-		log.Printf("[SESSION_LOG] 时间: %s", startTime.Format("2006-01-02 15:04:05"))
-		log.Printf("[SESSION_LOG] 方法: %s", method)
-		log.Printf("[SESSION_LOG] 路径: %s", path)
-		log.Printf("[SESSION_LOG] 客户端IP: %s", clientIP)
-		log.Printf("[SESSION_LOG] User-Agent: %s", userAgent)
+		// 记录请求开始信息
+		logger.Logger.Info("开始处理Session请求",
+			zap.String("method", method),
+			zap.String("path", path),
+			zap.String("client_ip", clientIP),
+			zap.String("user_agent", userAgent),
+			zap.Time("start_time", startTime),
+		)
 		
 		// 记录重要的请求头
 		if auth := c.GetHeader("Authorization"); auth != "" {
-			log.Printf("[SESSION_LOG] Authorization: %s...(已截断)", truncateString(auth, 20))
+			logger.Logger.Debug("请求包含Authorization头",
+				zap.String("path", path),
+				zap.String("auth_preview", truncateString(auth, 20)+"...(已截断)"),
+			)
 		}
 		if contentType := c.GetHeader("Content-Type"); contentType != "" {
-			log.Printf("[SESSION_LOG] Content-Type: %s", contentType)
+			logger.Logger.Debug("请求Content-Type",
+				zap.String("path", path),
+				zap.String("content_type", contentType),
+			)
 		}
 
 		// 读取并记录请求体
@@ -52,32 +59,50 @@ func SessionLog() gin.HandlerFunc {
 		}
 
 		if len(requestBody) > 0 {
-			log.Printf("[SESSION_LOG] 请求体大小: %d bytes", len(requestBody))
+			logger.Logger.Debug("收到请求体",
+				zap.String("path", path),
+				zap.Int("body_size", len(requestBody)),
+			)
 			// 尝试解析JSON请求体
 			if isJSONContent(c.GetHeader("Content-Type")) {
 				var jsonData interface{}
 				if err := json.Unmarshal(requestBody, &jsonData); err == nil {
 					// 格式化输出JSON
 					formattedJSON, _ := json.MarshalIndent(jsonData, "", "  ")
-					log.Printf("[SESSION_LOG] 请求体内容:\n%s", string(formattedJSON))
+					logger.Logger.Debug("请求体JSON内容",
+						zap.String("path", path),
+						zap.String("json_content", string(formattedJSON)),
+					)
 				} else {
-					log.Printf("[SESSION_LOG] 请求体内容 (非JSON): %s", truncateString(string(requestBody), 500))
+					logger.Logger.Debug("请求体内容(JSON解析失败)",
+						zap.String("path", path),
+						zap.String("raw_content", truncateString(string(requestBody), 500)),
+					)
 				}
 			} else {
-				log.Printf("[SESSION_LOG] 请求体内容: %s", truncateString(string(requestBody), 500))
+				logger.Logger.Debug("请求体内容",
+					zap.String("path", path),
+					zap.String("content", truncateString(string(requestBody), 500)),
+				)
 			}
 		} else {
-			log.Printf("[SESSION_LOG] 无请求体")
+			logger.Logger.Debug("无请求体", zap.String("path", path))
 		}
 
 		// 记录URL参数
 		if params := c.Request.URL.Query(); len(params) > 0 {
-			log.Printf("[SESSION_LOG] URL参数: %v", params)
+			logger.Logger.Debug("URL参数",
+				zap.String("path", path),
+				zap.Any("params", params),
+			)
 		}
 
 		// 记录路径参数
 		if sessionID := c.Param("session_id"); sessionID != "" {
-			log.Printf("[SESSION_LOG] Session ID: %s", sessionID)
+			logger.Logger.Debug("Session ID",
+				zap.String("path", path),
+				zap.String("session_id", sessionID),
+			)
 		}
 
 		// 创建响应写入器来捕获响应
@@ -95,50 +120,76 @@ func SessionLog() gin.HandlerFunc {
 		latency := endTime.Sub(startTime)
 		statusCode := c.Writer.Status()
 
-		log.Printf("[SESSION_LOG] === Session请求处理完成 ===")
-		log.Printf("[SESSION_LOG] 状态码: %d", statusCode)
-		log.Printf("[SESSION_LOG] 处理时间: %v", latency)
-		
+		fields := []zap.Field{
+			zap.Int("status_code", statusCode),
+			zap.Duration("latency", latency),
+			zap.String("path", path),
+		}
+
 		// 如果是404错误，给出特别的说明
 		if statusCode == 404 {
-			log.Printf("[SESSION_LOG] ⚠️  404错误分析:")
+			logger.Logger.Warn("404错误分析",
+				append(fields, zap.String("note", "检测到错误的路径"))...,
+			)
 			if strings.Contains(path, "/api/v1/session/") {
-				log.Printf("[SESSION_LOG] ⚠️  检测到错误的路径: %s", path)
-				log.Printf("[SESSION_LOG] ⚠️  正确的路径应该是: %s", strings.Replace(path, "/api/v1/session/", "/api/v1/sessions/", 1))
-				log.Printf("[SESSION_LOG] ⚠️  前端需要修正路径中的 'session' 为 'sessions'（复数）")
+				logger.Logger.Warn("路径修正建议",
+					zap.String("wrong_path", path),
+					zap.String("correct_path", strings.Replace(path, "/api/v1/session/", "/api/v1/sessions/", 1)),
+				)
+				logger.Logger.Warn("前端需要修正路径",
+					zap.String("current", "session"),
+					zap.String("suggested", "sessions (复数)"),
+				)
 			} else {
-				log.Printf("[SESSION_LOG] ⚠️  Session路径不存在: %s", path)
+				logger.Logger.Warn("Session路径不存在",
+					zap.String("path", path),
+				)
 			}
 		}
 
-		// 记录响应体
+// 记录响应体
 		responseBody := responseWriter.body.String()
 		if responseBody != "" {
-			log.Printf("[SESSION_LOG] 响应体大小: %d bytes", len(responseBody))
+			logger.Logger.Debug("响应体内容",
+				zap.String("path", path),
+				zap.Int("response_size", len(responseBody)),
+			)
 			// 尝试解析响应JSON
 			var jsonResponse interface{}
 			if err := json.Unmarshal([]byte(responseBody), &jsonResponse); err == nil {
 				formattedResponse, _ := json.MarshalIndent(jsonResponse, "", "  ")
-				log.Printf("[SESSION_LOG] 响应内容:\n%s", string(formattedResponse))
+				logger.Logger.Debug("响应JSON内容",
+					zap.String("json_content", string(formattedResponse)),
+				)
 			} else {
-				log.Printf("[SESSION_LOG] 响应内容: %s", truncateString(responseBody, 500))
+				logger.Logger.Debug("响应内容(非JSON)",
+					zap.String("raw_content", truncateString(responseBody, 500)),
+				)
 			}
 		} else {
-			log.Printf("[SESSION_LOG] 无响应体")
+			logger.Logger.Debug("无响应体", zap.String("path", path))
 		}
 
 		// 记录错误信息
 		if len(c.Errors) > 0 {
-			log.Printf("[SESSION_LOG] 错误信息: %s", c.Errors.String())
+			logger.Logger.Error("错误信息",
+				zap.String("path", path),
+				zap.String("errors", c.Errors.String()),
+			)
 		}
 
 		// 记录从上下文中获取的用户信息
 		if userID, exists := c.Get("userID"); exists {
-			log.Printf("[SESSION_LOG] 用户ID: %v", userID)
+			logger.Logger.Debug("用户ID",
+				zap.Any("user_id", userID),
+			)
 		}
 
-		log.Printf("[SESSION_LOG] === Session请求日志结束 ===")
-		log.Printf("")
+		// 记录完成日志
+		logger.Logger.Info("Session请求处理完成", append(fields,
+			zap.String("method", method),
+			zap.String("client_ip", clientIP),
+		)...)
 	}
 }
 

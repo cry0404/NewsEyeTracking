@@ -16,7 +16,7 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 	router.Use(middleware.CORS())
 
 	router.Use(middleware.Logger())
-
+	router.Use(middleware.SessionLog())
 	h := handlers.NewHandlers(services)
 
 	v1 := router.Group("/api/v1")

@@ -4,6 +4,7 @@ import (
 	"NewsEyeTracking/internal/api/routes"
 	"NewsEyeTracking/internal/database"
 	"NewsEyeTracking/internal/service"
+	"NewsEyeTracking/pkg/logger"
 	"context"
 	"log"
 	"net/http"
@@ -14,32 +15,40 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
 func main() {
-	
+	// 初始化环境变量
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("项目环境变量未成功加载，将使用系统环境变量")
 	}
 
+	// 初始化zap日志记录器
+	if err := logger.InitLogger(); err != nil {
+		log.Fatal("初始化日志记录器失败:", err)
+	}
+	// 确保在程序退出时刷新日志缓冲区
+	defer logger.Sync()
+
 	// 获取数据库连接字符串
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
-		log.Fatal("DB_URL环境变量未设置")
+		logger.Logger.Fatal("DB_URL环境变量未设置")
 	}
 
 	// 连接数据库
 	db, err := database.Connect(dbURL)
 	if err != nil {
-		log.Fatal("数据库连接失败:", err)
+		logger.Logger.Fatal("数据库连接失败", zap.Error(err))
 	}
 	defer db.Close()
 
 	// 连接Redis
 	redisClient, err := database.NewRedisClient()
 	if err != nil {
-		log.Fatal("Redis连接失败:", err)
+		logger.Logger.Fatal("Redis连接失败", zap.Error(err))
 	}
 	defer redisClient.Close()
 

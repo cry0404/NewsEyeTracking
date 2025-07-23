@@ -9,3 +9,52 @@ test/
 *.http
 data/
 data/user
+# 操作系统相关
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.bak
+*.tmp
+Split/
+# IDE/编辑器相关
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Go 相关
+bin/
+*.exe
+*.out
+*.test
+coverage.out
+
+# Python 相关
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+*.log
+*.sqlite3
+
+# Node.js 相关
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# 日志文件
+*.log
+
+# 其他常见
+*.lock
+*.orig
+*.rej
+*.swp
+*.swo
+*.bak
+*.tmp

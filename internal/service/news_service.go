@@ -4,9 +4,9 @@ import (
 	"NewsEyeTracking/internal/db"
 	"NewsEyeTracking/internal/models"
 	"context"
-	"database/sql"
 	"fmt"
-	"time"
+
+
 
 	"github.com/google/uuid"
 )
@@ -23,13 +23,15 @@ type NewsService interface {
 
 // newsService 新闻服务实现
 type newsService struct {
-	queries *db.Queries
+	queries         *db.Queries
+	recommendClient *RecommendService // 推荐服务客户端
 }
 
 // NewNewsService 创建新闻服务实例
-func NewNewsService(queries *db.Queries) NewsService {
+func NewNewsService(queries *db.Queries, recommendClient *RecommendService) NewsService {
 	return &newsService{
-		queries: queries,
+		queries:         queries,
+		recommendClient: recommendClient,
 	}
 }
 
@@ -48,16 +50,28 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 		return nil, fmt.Errorf("暂时无法获取到内部的测试信息: %w", err)
 	}
 
+/*
+	var hasRecommend bool
+	// var hasMoreInformation bool
+
+	hasRecommend = abConfig.HasRecommend.Bool
+
+	if hasRecommend {
+		//这里就是推荐算法的逻辑，返回的应该是
+	}*/
 	// 获取新闻列表
-	// 如果启用推荐算法，这里可以调用推荐算法，在这里接入推荐算法？
-articles, err := s.queries.GetRandomArticles(ctx, db.GetRandomArticlesParams{
-		PublishedAt: sql.NullTime{Time: time.Now().AddDate(0, 0, -7), Valid: true}, // 最近7天的新闻
-		Limit:       int32(limit),
-	})
+
+	//这里应该需要
+	RecommendResponse, err := s.recommendClient.GetRecommendations(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get articles: %w", err)
 	}
+	var  articleID  []string
+	for _, recommendNews := range RecommendResponse.Recommendations {
+		articleID = append(articleID,  recommendNews.NewsID)
+	}
 
+	articles, err := s.queries.GetArticlesByGUID(ctx, articleID)
 
 	newsItems := make([]models.NewsListItem, 0, len(articles))
 	newsGUIDs := make([]string, 0, len(articles))
@@ -142,3 +156,5 @@ func (s *newsService) GetNewsDetail(ctx context.Context, newsID string) (*models
 func (s *newsService) Stop() {
 	// 由于缓存管理已经移动到 handlers，这里就是一个空实现
 }
+
+

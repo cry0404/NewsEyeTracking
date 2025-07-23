@@ -14,18 +14,22 @@ type Services struct {
 	UserSession UserSessionService
 	Auth        AuthService
 	Upload      UploadService
+	Recommend   *RecommendService // 推荐服务
 }
 
 // NewServices 创建服务层实例
 func NewServices(database *sql.DB, redisClient *database.RedisClient) *Services {
 	queries := db.New(database)
 
+	recommendService := NewRecommendService("") // 使用默认地址
+
 	return &Services{
 		User:        NewUserService(queries),
-		News:        NewNewsService(queries),
+		News:        NewNewsService(queries, recommendService), // 传递推荐服务
 		Session:     NewSessionService(queries),
 		UserSession: NewUserSessionService(queries, redisClient),
 		Auth:        NewAuthService(queries),
 		Upload:      NewUploadService(queries),
+		Recommend:   recommendService,
 	}
 }

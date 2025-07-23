@@ -17,7 +17,7 @@ type EyeEvent struct {
 // ClickEvent 点击事件数据
 type ClickEvent struct {
 	Timestamp time.Time  `json:"timestamp"`           // Unix时间戳（毫秒）
-	ID        string    `json:"id"`                  // 点击目标的元素ID
+	ID        int       `json:"id"`                  // 点击目标的元素ID
 	X         float32    `json:"x"`                   // 点击的X坐标
 	Y         float32    `json:"y"`                   // 点击的Y坐标
 }
@@ -128,7 +128,7 @@ func (td *TrackingData) AddEyeEvent(id string, x, y float32) {
 }
 
 // AddClickEvent 添加点击事件
-func (td *TrackingData) AddClickEvent(timestamp time.Time, id string, x, y float32) {
+func (td *TrackingData) AddClickEvent(timestamp time.Time, id int, x, y float32) {
 	td.ClickEvents = append(td.ClickEvents, ClickEvent{
 		Timestamp: timestamp,
 		ID:        id,
