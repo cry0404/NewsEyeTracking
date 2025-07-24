@@ -4,10 +4,10 @@ import (
 	"NewsEyeTracking/internal/db"
 	"NewsEyeTracking/internal/models"
 	"context"
-	"database/sql"
+	//"database/sql"
 	"fmt"
 	"encoding/json"
-	"time"
+	//"time"
 	//"math/rand"
 
 
@@ -67,22 +67,22 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 	// 获取新闻列表
 
 	//推荐服务临时注释，GUID不匹配问题待修复
-	// RecommendResponse, err := s.recommendClient.GetRecommendations(ctx, userID)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to get articles: %w", err)
-	// }
-	// var  articleID  []string
-	// for _, recommendNews := range RecommendResponse.Recommendations {
-	// 	articleID = append(articleID,  recommendNews.NewsID)
-	// }
-	// articles, err := s.queries.GetArticlesByGUID(ctx, articleID)
+	 RecommendResponse, err := s.recommendClient.GetRecommendations(ctx, userID)
+	 if err != nil {
+	 	return nil, fmt.Errorf("failed to get articles: %w", err)
+	 }
+	 var  articleID  []string
+	 for _, recommendNews := range RecommendResponse.Recommendations {
+	 	articleID = append(articleID,  recommendNews.NewsID)
+	 }
+	 articles, err := s.queries.GetArticlesByGUID(ctx, articleID)
 
 	// 临时解决方案：直接从数据库获取最新文章
-	oneDayAgo := time.Now().AddDate(0, 0, -1)
+	/*oneDayAgo := time.Now().AddDate(0, 0, -1)
 	articles, err := s.queries.GetNewArticles(ctx, db.GetNewArticlesParams{
 		PublishedAt: sql.NullTime{Time: oneDayAgo, Valid: true},
 		Limit: int32(limit),
-	})
+	})*/
 
 	if err != nil {
 		return nil, fmt.Errorf("从数据库查询对应文章错误: %w", err)
