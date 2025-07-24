@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/lib/pq"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const getArticleByGUID = `-- name: GetArticleByGUID :one
@@ -130,8 +131,33 @@ func (q *Queries) GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]G
 	return items, nil
 }
 
+const getMoreInfoMation = `-- name: GetMoreInfoMation :one
+SELECT like_count, share_count, save_count, comments
+FROM feed_items
+WHERE guid = $1
+`
+
+type GetMoreInfoMationRow struct {
+	LikeCount  sql.NullInt32         `json:"like_count"`
+	ShareCount sql.NullInt32         `json:"share_count"`
+	SaveCount  sql.NullInt32         `json:"save_count"`
+	Comments   pqtype.NullRawMessage `json:"comments"`
+}
+
+func (q *Queries) GetMoreInfoMation(ctx context.Context, guid string) (GetMoreInfoMationRow, error) {
+	row := q.db.QueryRowContext(ctx, getMoreInfoMation, guid)
+	var i GetMoreInfoMationRow
+	err := row.Scan(
+		&i.LikeCount,
+		&i.ShareCount,
+		&i.SaveCount,
+		&i.Comments,
+	)
+	return i, err
+}
+
 const getNewArticles = `-- name: GetNewArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments FROM feed_items
 WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2
@@ -164,6 +190,10 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 			pq.Array(&i.Keywords),
 			&i.PublishedAt,
 			&i.CreatedAt,
+			&i.LikeCount,
+			&i.ShareCount,
+			&i.SaveCount,
+			&i.Comments,
 		); err != nil {
 			return nil, err
 		}
@@ -179,7 +209,7 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 }
 
 const getRandomArticles = `-- name: GetRandomArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments FROM feed_items
 WHERE published_at > $1  -- 最近一段时间的新闻
 ORDER BY RANDOM()
 LIMIT $2
@@ -212,6 +242,10 @@ func (q *Queries) GetRandomArticles(ctx context.Context, arg GetRandomArticlesPa
 			pq.Array(&i.Keywords),
 			&i.PublishedAt,
 			&i.CreatedAt,
+			&i.LikeCount,
+			&i.ShareCount,
+			&i.SaveCount,
+			&i.Comments,
 		); err != nil {
 			return nil, err
 		}

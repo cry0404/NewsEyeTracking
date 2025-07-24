@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // GetNews 获取新闻列表
@@ -164,7 +165,9 @@ func (h *Handlers) GetNewsDetail(c *gin.Context) {
 	ctx, cancel := utils.WithDatabaseTimeout(c.Request.Context())
 	defer cancel()
 	
-	newsDetail, err := h.services.News.GetNewsDetail(ctx, newsIDStr)
+	useruuid, _ := uuid.Parse(userID)
+
+	newsDetail, err := h.services.News.GetNewsDetail(ctx, newsIDStr, useruuid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
 			models.ErrorCodeInternalError,

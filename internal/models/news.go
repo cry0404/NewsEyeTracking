@@ -37,10 +37,16 @@ type NewsListResponse struct {
 
 // AdditionalInfo 额外信息（用于A/B测试）
 type AdditionalInfo struct {
-	LikeCount    int `json:"like_count"`
-	CommentCount int `json:"comment_count"`
-	ShareCount   int `json:"share_count"`
-	SaveCount    int `json:"save_count"`
+	LikeCount    int32 		`json:"like_count"`
+	Comments     []Comment  `json:"comments"`
+	ShareCount   int32 		`json:"share_count"`
+	SaveCount    int32 		`json:"save_count"`
+}
+
+type Comment struct {
+	Content		string      `json:"content"`
+	Like  		int32   		`json:"like"`
+	Replies		[]*Comment 	`json:"replies"`
 }
 // 对应端点为 /new/{guid}
 // NewsDetailResponse 新闻详情响应（支持A/B测试）, 默认为空

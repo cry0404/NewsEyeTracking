@@ -29,3 +29,8 @@ WHERE id = $1;
 SELECT feed_id, title, description, content, link, guid, author, published_at 
 FROM feed_items 
 WHERE guid = $1;
+
+-- name: GetMoreInfoMation :one
+SELECT like_count, share_count, save_count, comments
+FROM feed_items
+WHERE guid = $1;
