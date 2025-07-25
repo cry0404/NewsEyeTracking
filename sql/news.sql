@@ -6,10 +6,11 @@ ORDER BY published_at DESC
 LIMIT $2;
 
 -- name: GetArticlesByGUID :many
-SELECT id, title, description, content, link, guid, author, published_at 
+SELECT id, title, content, guid, like_count, share_count, save_count, comment_count
 FROM feed_items 
 WHERE guid = ANY($1::text[])
-ORDER BY published_at DESC;
+ORDER BY published_at DESC
+LIMIT $2;
 
 -- 随机获取新闻文章
 -- name: GetRandomArticles :many
@@ -28,4 +29,9 @@ WHERE id = $1;
 -- 根据 guid 来应该更好一点， 因为guid是唯一的， 而id不是
 SELECT feed_id, title, description, content, link, guid, author, published_at 
 FROM feed_items 
+WHERE guid = $1;
+
+-- name: GetMoreInfoMation :one
+SELECT like_count, share_count, save_count, comments
+FROM feed_items
 WHERE guid = $1;

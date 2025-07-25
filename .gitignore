@@ -16,7 +16,6 @@ Desktop.ini
 *.swo
 *.bak
 *.tmp
-Split/
 # IDE/编辑器相关
 .vscode/
 .idea/
@@ -40,6 +39,11 @@ __pycache__/
 *.egg
 *.log
 *.sqlite3
+venv/
+.venv/
+Split/.venv/
+Recommend/.venv/
+Recommend/venv/
 
 # Node.js 相关
 node_modules/

@@ -36,9 +36,14 @@ type FeedItem struct {
 	Guid    string         `json:"guid"`
 	Author  sql.NullString `json:"author"`
 	// 关键词数组（通过分词算法提取）
-	Keywords    []string     `json:"keywords"`
-	PublishedAt sql.NullTime `json:"published_at"`
-	CreatedAt   sql.NullTime `json:"created_at"`
+	Keywords     []string              `json:"keywords"`
+	PublishedAt  sql.NullTime          `json:"published_at"`
+	CreatedAt    sql.NullTime          `json:"created_at"`
+	LikeCount    sql.NullInt32         `json:"like_count"`
+	ShareCount   sql.NullInt32         `json:"share_count"`
+	SaveCount    sql.NullInt32         `json:"save_count"`
+	Comments     pqtype.NullRawMessage `json:"comments"`
+	CommentCount sql.NullInt32         `json:"comment_count"`
 }
 
 type InviteCode struct {

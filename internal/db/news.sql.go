@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/lib/pq"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const getArticleByGUID = `-- name: GetArticleByGUID :one
@@ -81,25 +82,31 @@ func (q *Queries) GetArticleByID(ctx context.Context, id int32) (GetArticleByIDR
 }
 
 const getArticlesByGUID = `-- name: GetArticlesByGUID :many
-SELECT id, title, description, content, link, guid, author, published_at 
+SELECT id, title, content, guid, like_count, share_count, save_count, comment_count
 FROM feed_items 
 WHERE guid = ANY($1::text[])
 ORDER BY published_at DESC
+LIMIT $2
 `
 
-type GetArticlesByGUIDRow struct {
-	ID          int32          `json:"id"`
-	Title       string         `json:"title"`
-	Description sql.NullString `json:"description"`
-	Content     sql.NullString `json:"content"`
-	Link        string         `json:"link"`
-	Guid        string         `json:"guid"`
-	Author      sql.NullString `json:"author"`
-	PublishedAt sql.NullTime   `json:"published_at"`
+type GetArticlesByGUIDParams struct {
+	Column1 []string `json:"column_1"`
+	Limit   int32    `json:"limit"`
 }
 
-func (q *Queries) GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]GetArticlesByGUIDRow, error) {
-	rows, err := q.db.QueryContext(ctx, getArticlesByGUID, pq.Array(dollar_1))
+type GetArticlesByGUIDRow struct {
+	ID           int32          `json:"id"`
+	Title        string         `json:"title"`
+	Content      sql.NullString `json:"content"`
+	Guid         string         `json:"guid"`
+	LikeCount    sql.NullInt32  `json:"like_count"`
+	ShareCount   sql.NullInt32  `json:"share_count"`
+	SaveCount    sql.NullInt32  `json:"save_count"`
+	CommentCount sql.NullInt32  `json:"comment_count"`
+}
+
+func (q *Queries) GetArticlesByGUID(ctx context.Context, arg GetArticlesByGUIDParams) ([]GetArticlesByGUIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getArticlesByGUID, pq.Array(arg.Column1), arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -110,12 +117,12 @@ func (q *Queries) GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
-			&i.Description,
 			&i.Content,
-			&i.Link,
 			&i.Guid,
-			&i.Author,
-			&i.PublishedAt,
+			&i.LikeCount,
+			&i.ShareCount,
+			&i.SaveCount,
+			&i.CommentCount,
 		); err != nil {
 			return nil, err
 		}
@@ -130,8 +137,33 @@ func (q *Queries) GetArticlesByGUID(ctx context.Context, dollar_1 []string) ([]G
 	return items, nil
 }
 
+const getMoreInfoMation = `-- name: GetMoreInfoMation :one
+SELECT like_count, share_count, save_count, comments
+FROM feed_items
+WHERE guid = $1
+`
+
+type GetMoreInfoMationRow struct {
+	LikeCount  sql.NullInt32         `json:"like_count"`
+	ShareCount sql.NullInt32         `json:"share_count"`
+	SaveCount  sql.NullInt32         `json:"save_count"`
+	Comments   pqtype.NullRawMessage `json:"comments"`
+}
+
+func (q *Queries) GetMoreInfoMation(ctx context.Context, guid string) (GetMoreInfoMationRow, error) {
+	row := q.db.QueryRowContext(ctx, getMoreInfoMation, guid)
+	var i GetMoreInfoMationRow
+	err := row.Scan(
+		&i.LikeCount,
+		&i.ShareCount,
+		&i.SaveCount,
+		&i.Comments,
+	)
+	return i, err
+}
+
 const getNewArticles = `-- name: GetNewArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count FROM feed_items
 WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2
@@ -164,6 +196,11 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 			pq.Array(&i.Keywords),
 			&i.PublishedAt,
 			&i.CreatedAt,
+			&i.LikeCount,
+			&i.ShareCount,
+			&i.SaveCount,
+			&i.Comments,
+			&i.CommentCount,
 		); err != nil {
 			return nil, err
 		}
@@ -179,7 +216,7 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 }
 
 const getRandomArticles = `-- name: GetRandomArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count FROM feed_items
 WHERE published_at > $1  -- 最近一段时间的新闻
 ORDER BY RANDOM()
 LIMIT $2
@@ -212,6 +249,11 @@ func (q *Queries) GetRandomArticles(ctx context.Context, arg GetRandomArticlesPa
 			pq.Array(&i.Keywords),
 			&i.PublishedAt,
 			&i.CreatedAt,
+			&i.LikeCount,
+			&i.ShareCount,
+			&i.SaveCount,
+			&i.Comments,
+			&i.CommentCount,
 		); err != nil {
 			return nil, err
 		}
