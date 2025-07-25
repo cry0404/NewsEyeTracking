@@ -49,17 +49,9 @@ func (h *Handlers) GetNews(c *gin.Context) {
 		))
 		return
 	}
-	defaultLimit := req.Limit
+
 	// 默认限制为5条，最多10条
-	if req.Limit == 0 {
-		req.Limit = 5
-	} else{
-		if req.Limit > 10 {
-			req.Limit = 10
-		}else{
-			req.Limit = defaultLimit
-		}
-	}
+	req.Limit = 5	
 
 	// 测试 id  ，实际应该填写对应的 userid， 先硬编码上去再说
 	// 为数据库查询创建带超时的 context， 请求返回之前应该创建一个新的用户会话

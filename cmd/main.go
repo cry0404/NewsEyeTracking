@@ -133,7 +133,8 @@ func validateUploadEnvVars() error {
 		"ACCESS_KEY",
 		"OSS_REGION",
 		"OSS_BUCKET_NAME",
-		"UPLOAD_WATCH_DIR",
+		"UPLOAD_TRACKING_DIR",
+		"UPLOAD_NEWS_DIR",
 		"UPLOAD_TEMP_DIR",
 		"UPLOAD_MAX_FILES",
 		"UPLOAD_MAX_SIZE",
@@ -151,12 +152,18 @@ func validateUploadEnvVars() error {
 
 // createUploadDirectories 创建上传服务所需的目录
 func createUploadDirectories() error {
-	watchDir := os.Getenv("UPLOAD_WATCH_DIR")
+	trackingDir := os.Getenv("UPLOAD_TRACKING_DIR")
+	newsDir := os.Getenv("UPLOAD_NEWS_DIR")
 	tempDir := os.Getenv("UPLOAD_TEMP_DIR")
 
-	// 创建监控目录
-	if err := os.MkdirAll(watchDir, 0755); err != nil {
-		return fmt.Errorf("创建监控目录 %s 失败: %v", watchDir, err)
+	// 创建tracking目录
+	if err := os.MkdirAll(trackingDir, 0755); err != nil {
+		return fmt.Errorf("创建tracking目录 %s 失败: %v", trackingDir, err)
+	}
+
+	// 创建news目录
+	if err := os.MkdirAll(newsDir, 0755); err != nil {
+		return fmt.Errorf("创建news目录 %s 失败: %v", newsDir, err)
 	}
 
 	// 创建临时目录
@@ -164,6 +171,6 @@ func createUploadDirectories() error {
 		return fmt.Errorf("创建临时目录 %s 失败: %v", tempDir, err)
 	}
 
-	log.Printf("上传目录创建成功 - 监控目录: %s, 临时目录: %s", watchDir, tempDir)
+	log.Printf("上传目录创建成功 - tracking: %s, news: %s, 临时: %s", trackingDir, newsDir, tempDir)
 	return nil
 }

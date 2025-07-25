@@ -40,9 +40,9 @@ type NewsListResponse struct {
 // AdditionalInfo 额外信息（用于A/B测试）
 type AdditionalInfo struct {
 	LikeCount    int32 		`json:"like_count"`
-	Comments     []Comment  `json:"comments"`
 	ShareCount   int32 		`json:"share_count"`
 	SaveCount    int32 		`json:"save_count"`
+	Comments     []Comment  `json:"comments"`
 }
 
 type Comment struct {
@@ -56,10 +56,10 @@ type NewsDetailResponse struct {
 //这里不需要设置 id 了
 	GUID           string          `json:"guid"`
 	Title          string          `json:"title"`
-	Description    *string         `json:"description"`
+	//Description    *string         `json:"description"`
 	Content        string          `json:"content"` // 包含class_id的HTML内容
-	Author         *string         `json:"author"`
-	PublishedAt    *time.Time      `json:"published_at"`
+	//Author         *string         `json:"author"`
+	//PublishedAt    *time.Time      `json:"published_at"`
 	AdditionalInfo *AdditionalInfo `json:"additional_info,omitempty"` // 根据A/B测试决定是否包含
 }
 
