@@ -1,0 +1,272 @@
+import psycopg
+from bs4 import BeautifulSoup, NavigableString
+import jieba
+import jieba.analyse
+import html
+
+class HtmlTextSegmenter:
+    def __init__(self):
+        self.rows = []
+
+    def load_data(self, db_config, sql):
+        with psycopg.connect(**db_config, client_encoding='UTF8') as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql)
+                self.rows = cur.fetchall()
+                for i, row in enumerate(self.rows):
+                    print(f"Row {i} id={row[0]} type(content)={type(row[1])} type(title)={type(row[2])} type(summary)={type(row[3])} repr content={repr(row[1])[:100]}")
+
+    def segment_text(self, text):
+        if not text.strip():
+            return text
+        tokens = list(jieba.tokenize(text))
+        # 按起始位置从大到小排序，这样从后往前替换不会影响前面的位置
+        tokens.sort(key=lambda x: -x[1])
+        marked_text = text
+        for idx, (word, start, end) in enumerate(tokens):
+            # 为每个词添加唯一的data-id
+            span_tag = f'<span data-id="{start}_{end}">{word}</span>'
+            marked_text = marked_text[:start] + span_tag + marked_text[end:]
+        return marked_text
+
+    def segment_html(self, html_content):
+        raw_html = html.unescape(html_content or "")
+        soup = BeautifulSoup(raw_html, "html.parser")
+        skip_tags = {'script', 'style', 'img', 'iframe'}
+
+        def recurse(node):
+            for child in list(node.children):
+                if isinstance(child, NavigableString):
+                    text = str(child)
+                    if text.strip():
+                        segmented = self.segment_text(text)
+                        # 使用BeautifulSoup解析分词后的HTML，避免转义问题
+                        segmented_soup = BeautifulSoup(segmented, "html.parser")
+                        child.replace_with(segmented_soup)
+                elif child.name not in skip_tags:
+                    recurse(child)
+
+        recurse(soup)
+        return str(soup)
+
+    def remove_span_tags(self, html_content):
+        soup = BeautifulSoup(html.unescape(html_content or ""), "html.parser")
+        for span in soup.find_all('span', attrs={"data-id": True}):
+            span.unwrap()
+        return soup.get_text(separator=" ", strip=True)
+
+    def extract_keywords(self, html_content, title="", summary=""):
+        # 去除已有标签后提取纯文本
+        clean_html_text = self.remove_span_tags(html_content)
+        clean_title_text = self.remove_span_tags(title)
+        clean_summary_text = self.remove_span_tags(summary)
+
+        full_text = ' '.join(filter(None, [clean_title_text, clean_summary_text, clean_html_text]))
+        print("[extract_keywords] 合并纯文本:", repr(full_text[:200]))
+
+        keywords = jieba.analyse.extract_tags(full_text, topK=5, withWeight=True)
+        print("[extract_keywords] 提取关键词:", keywords)
+        return keywords
+    
+    def should_recommend(self, html_content, title="", summary=""):
+        """
+        判断文章是否应该被推荐
+        限制条件：
+        1. 内容不能过短（防止分词失败）
+        2. 必须能够提取出至少5个关键词
+        """
+        # 去除HTML标签获取纯文本
+        clean_content = self.remove_span_tags(html_content)
+        clean_title = self.remove_span_tags(title)
+        clean_summary = self.remove_span_tags(summary)
+        
+        # 合并所有文本内容
+        full_content = ' '.join(filter(None, [clean_title, clean_summary, clean_content]))
+        content_length = len(full_content.replace(' ', '').replace('\n', '').replace('\t', ''))
+        print(f"[should_recommend] 总内容长度: {content_length} 字符")
+        
+        # 基本长度检查，防止内容过短导致分词失败
+        if content_length < 10:  # 降低到10字符，仅防止极端情况
+            print(f"[should_recommend] 内容过短({content_length}字符)，可能导致分词失败，不推荐")
+            return False, "内容过短，无法分词"
+        
+        # 主要判断逻辑：检查关键词数量
+        keywords = self.extract_keywords(html_content, title, summary)
+        if not keywords or len(keywords) == 0:
+            print("[should_recommend] 无法提取关键词，不推荐")
+            return False, "无法提取关键词"
+        
+        # 检查关键词数量是否达到要求（至少5个）
+        valid_keywords = [kw for kw, weight in keywords if weight > 0.01]  # 权重阈值
+        if len(valid_keywords) < 5:
+            print(f"[should_recommend] 关键词数量不足({len(valid_keywords)}个)，需要至少5个关键词，不推荐")
+            return False, f"关键词数量不足，只有{len(valid_keywords)}个"
+        
+        print(f"[should_recommend] 符合推荐条件，提取到{len(valid_keywords)}个有效关键词: {valid_keywords}")
+        return True, "符合推荐条件"
+
+    def write_back(self, db_config, table_name, id_column, html_column, keywords_column, title_column, summary_column):
+        """
+        将处理后的数据写回数据库，使用单记录事务确保鲁棒性
+        """
+        processed_count = 0
+        skipped_count = 0
+        error_count = 0
+        error_details = []
+        
+        print(f"\n开始处理 {len(self.rows)} 条记录...")
+        
+        for i, row in enumerate(self.rows):
+            record_id = None
+            try:
+                record_id = row[0]
+                raw_html = row[1] or ""
+                raw_title = row[2] or ""
+                raw_summary = row[3] or ""
+
+                print(f"\n[{i+1}/{len(self.rows)}] Processing record id={record_id}")
+                
+                # 检查是否符合推荐条件
+                try:
+                    should_recommend, reason = self.should_recommend(raw_html, raw_title, raw_summary)
+                    if not should_recommend:
+                        print(f"  → Skipping: {reason}")
+                        skipped_count += 1
+                        continue
+                except Exception as e:
+                    print(f"  → Error in should_recommend: {e}")
+                    error_count += 1
+                    error_details.append(f"ID {record_id}: should_recommend failed - {str(e)}")
+                    continue
+
+                # 检查是否已经分词
+                def has_been_segmented(content):
+                    try:
+                        if not content:
+                            return False
+                        soup = BeautifulSoup(html.unescape(content), "html.parser")
+                        return bool(soup.find("span", attrs={"data-id": True}))
+                    except Exception:
+                        return False
+
+                # 分词处理
+                try:
+                    new_html = raw_html
+                    new_title = raw_title  
+                    new_summary = raw_summary
+                    
+                    if raw_html and not has_been_segmented(raw_html):
+                        new_html = self.segment_html(raw_html)
+                        print(f"  → HTML分词完成")
+                        
+                    if raw_title and not has_been_segmented(raw_title):
+                        new_title = self.segment_html(raw_title)
+                        print(f"  → 标题分词完成")
+                        
+                    if raw_summary and not has_been_segmented(raw_summary):
+                        new_summary = self.segment_html(raw_summary)
+                        print(f"  → 摘要分词完成")
+                        
+                except Exception as e:
+                    print(f"  → Error in segmentation: {e}")
+                    error_count += 1
+                    error_details.append(f"ID {record_id}: segmentation failed - {str(e)}")
+                    continue
+
+                # 关键词提取
+                try:
+                    keywords_with_weight = self.extract_keywords(raw_html, raw_title, raw_summary)
+                    keywords_list = [kw for kw, _ in keywords_with_weight]
+                    
+                    # 限制关键词数量，避免超过数据库字段限制
+                    if len(keywords_list) > 10:  # 最多保留10个关键词
+                        keywords_list = keywords_list[:10]
+                        print(f"  → 关键词被截断为前10个")
+                    
+                    # PostgreSQL数组格式处理：将keywords_list传给psycopg，它会自动转换为数组
+                    keywords_array = keywords_list  # psycopg3会自动处理Python list到PostgreSQL array的转换
+                    
+                    print(f"  → 关键词提取完成: {keywords_list}")
+                    
+                except Exception as e:
+                    print(f"  → Error in keyword extraction: {e}")
+                    error_count += 1
+                    error_details.append(f"ID {record_id}: keyword extraction failed - {str(e)}")
+                    continue
+
+                # 数据库更新（单记录事务）
+                try:
+                    with psycopg.connect(**db_config, client_encoding='UTF8') as conn:
+                        with conn.cursor() as cur:
+                            sql = f"""
+                                UPDATE {table_name} SET
+                                    {html_column} = %s,
+                                    {keywords_column} = %s,
+                                    {title_column} = %s,
+                                    {summary_column} = %s
+                                WHERE {id_column} = %s
+                            """
+                            
+                            # 验证数据长度
+                            if len(str(new_html)) > 50000:  # 假设字段最大长度50000字符
+                                print(f"  → Warning: HTML内容过长，可能被截断")
+                                new_html = str(new_html)[:49000] + "...[truncated]"
+                            
+                            cur.execute(sql, (new_html, keywords_array, new_title, new_summary, record_id))
+                            
+                            # 检查是否有行被更新
+                            if cur.rowcount == 0:
+                                print(f"  → Warning: 没有找到ID为 {record_id} 的记录")
+                                error_count += 1
+                                error_details.append(f"ID {record_id}: record not found")
+                                continue
+                            
+                            conn.commit()
+                            processed_count += 1
+                            print(f"  → ✅ 数据库更新成功")
+                            
+                except psycopg.Error as db_error:
+                    print(f"  → Database error: {db_error}")
+                    error_count += 1
+                    error_details.append(f"ID {record_id}: database error - {str(db_error)}")
+                    continue
+                    
+                except Exception as e:
+                    print(f"  → Error in database update: {e}")
+                    error_count += 1
+                    error_details.append(f"ID {record_id}: database update failed - {str(e)}")
+                    continue
+                    
+            except Exception as e:
+                print(f"  → Unexpected error processing record {record_id}: {e}")
+                error_count += 1
+                error_details.append(f"ID {record_id}: unexpected error - {str(e)}")
+                continue
+        
+        # 输出统计结果
+        print(f"\n" + "="*60)
+        print(f"📈 处理统计结果")
+        print(f"="*60)
+        print(f"✅ 成功处理: {processed_count} 条")
+        print(f"⏭️  跳过（不符合条件）: {skipped_count} 条")
+        print(f"❌ 错误: {error_count} 条")
+        print(f"📁 总记录数: {len(self.rows)} 条")
+        print(f"📊 成功率: {(processed_count/len(self.rows)*100):.1f}%" if self.rows else "0%")
+        
+        if error_details:
+            print(f"\n❌ 错误详情:")
+            for detail in error_details[:10]:  # 只显示前10个错误
+                print(f"  - {detail}")
+            if len(error_details) > 10:
+                print(f"  ... 还有 {len(error_details)-10} 个错误")
+        
+        print(f"="*60)
+        
+        return {
+            'processed': processed_count,
+            'skipped': skipped_count, 
+            'errors': error_count,
+            'total': len(self.rows),
+            'success_rate': processed_count/len(self.rows)*100 if self.rows else 0,
+            'error_details': error_details
+        }

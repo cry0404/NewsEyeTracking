@@ -1,0 +1,4 @@
+[submodule "rss"]
+	path = rss
+	url = git@github.com:cry0404/easyRss.git
+	branch = dev
