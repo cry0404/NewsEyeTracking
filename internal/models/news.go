@@ -21,12 +21,14 @@ type News struct {
 
 // NewsListItem 新闻列表项响应（用于/news接口）
 type NewsListItem struct {
-	ID          int        `json:"id"`
-	GUID        string     `json:"guid"`
-	Title       string     `json:"title"`
-	Description *string    `json:"description"`
-	Author      *string    `json:"author"`
-	PublishedAt *time.Time `json:"published_at"`
+	ID          	int        `json:"id"`
+	GUID        	string     `json:"guid"`
+	Title       	string     `json:"title"`
+	Content			string     `json:"content"`
+	LikeCount   	int32      `json:"like_count,omitempty"`
+	ShareCount  	int32      `json:"share_count,omitempty"`
+	SaveCount   	int32      `json:"save_count,omitempty"`
+	CommentCount 	int32	   `json:"comment_count,omitempty"`
 }
 
 // NewsListResponse 新闻列表响应

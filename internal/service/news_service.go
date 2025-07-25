@@ -52,21 +52,12 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 	if err != nil {
 		return nil, fmt.Errorf("暂时无法获取到内部的测试信息: %w", err)
 	}
-	//var hasMoreInformation bool
-	//这里判断是否需要增加额外信息
 
-/*
-	var hasRecommend bool
-	
 
-	hasRecommend = abConfig.HasRecommend.Bool
+	// 安全处理HasMoreInformation字段
+	hasMoreInformation := abConfig.HasMoreInformation.Valid && abConfig.HasMoreInformation.Bool
+	//这里判断是否需要增加额外信息, 需要获取每一篇新闻的点赞收藏等信息
 
-	if hasRecommend {
-		//这里就是推荐算法的逻辑，返回的应该是
-	}*/
-	// 获取新闻列表
-
-	//推荐服务临时注释，GUID不匹配问题待修复
 	 RecommendResponse, err := s.recommendClient.GetRecommendations(ctx, userID)
 	 if err != nil {
 	 	return nil, fmt.Errorf("failed to get articles: %w", err)
@@ -75,7 +66,11 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 	 for _, recommendNews := range RecommendResponse.Recommendations {
 	 	articleID = append(articleID,  recommendNews.NewsID)
 	 }
-	 articles, err := s.queries.GetArticlesByGUID(ctx, articleID)
+	 Params := db.GetArticlesByGUIDParams{
+		Column1: articleID,
+		Limit:   int32(limit),
+	 }
+	 articles, err := s.queries.GetArticlesByGUID(ctx, Params)
 
 	// 临时解决方案：直接从数据库获取最新文章
 	/*oneDayAgo := time.Now().AddDate(0, 0, -1)
@@ -89,29 +84,38 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 	}
 	newsItems := make([]models.NewsListItem, 0, len(articles))
 	newsGUIDs := make([]string, 0, len(articles))
-	for _, article := range articles {
-		newsItem := models.NewsListItem{
-			ID:          int(article.ID),
-			GUID:        article.Guid,
-			Title:       article.Title,
-			Description: &article.Description.String,
-			Author:      &article.Author.String,
-			PublishedAt: &article.PublishedAt.Time,
-		}
+	if hasMoreInformation {
+		for _, article := range articles {
+			newsItem := models.NewsListItem{
+				ID:          int(article.ID),
+				GUID:        article.Guid,
+				Content:     article.Content.String,
+				Title:       article.Title,
+				LikeCount:   article.LikeCount.Int32,
+				ShareCount:  article.ShareCount.Int32,
+				SaveCount:   article.SaveCount.Int32,
+				CommentCount:article.CommentCount.Int32 ,
+			}
+			
+			
 
-		// 处理可能为空的字段
-		if !article.Description.Valid {
-			newsItem.Description = nil
+			newsItems = append(newsItems, newsItem)
+			newsGUIDs = append(newsGUIDs, article.Guid)
 		}
-		if !article.Author.Valid {
-			newsItem.Author = nil
-		}
-		if !article.PublishedAt.Valid {
-			newsItem.PublishedAt = nil
-		}
+	}else{
+		for _, article := range articles {
+			newsItem := models.NewsListItem{
+				ID:          int(article.ID),
+				GUID:        article.Guid,
+				Content:     article.Content.String,
+				Title:       article.Title,
+			}
+			
+			
 
-		newsItems = append(newsItems, newsItem)
-		newsGUIDs = append(newsGUIDs, article.Guid)
+			newsItems = append(newsItems, newsItem)
+			newsGUIDs = append(newsGUIDs, article.Guid)
+		}
 	}
 
 
@@ -145,7 +149,8 @@ func (s *newsService) GetNewsDetail(ctx context.Context, newsID string, userID u
 	}
 
 
-	hasMoreInformation := abConfig.HasMoreInformation.Bool
+	// 安全处理HasMoreInformation字段
+	hasMoreInformation := abConfig.HasMoreInformation.Valid && abConfig.HasMoreInformation.Bool
 	//先默认调整为 false， 最后再来调整
 	article, err := s.queries.GetArticleByGUID(ctx, newsID)
 	if err != nil {
