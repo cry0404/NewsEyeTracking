@@ -61,18 +61,38 @@ func InitLogger() error {
 		return err
 	}
 
-	// 配置日志级别
-	level := zapcore.InfoLevel
-	if os.Getenv("LOG_LEVEL") == "debug" {
-		level = zapcore.DebugLevel
+	// 配置日志级别 - 生产环境只记录错误
+	level := zapcore.ErrorLevel
+	ginMode := os.Getenv("GIN_MODE")
+	logLevel := os.Getenv("LOG_LEVEL")
+	
+	// 开发环境允许更详细的日志
+	if ginMode != "release" {
+		if logLevel == "debug" {
+			level = zapcore.DebugLevel
+		} else {
+			level = zapcore.InfoLevel
+		}
 	}
 
-	// 创建核心
-	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level),           // 控制台输出
-		zapcore.NewCore(fileEncoder, zapcore.AddSync(logFile), level),               // 所有日志文件
-		zapcore.NewCore(fileEncoder, zapcore.AddSync(errorFile), zapcore.ErrorLevel), // 错误日志文件
-	)
+	// 创建核心 - 生产环境只输出错误日志
+	var cores []zapcore.Core
+	
+	if ginMode == "release" {
+		// 生产模式：只记录错误到文件，不输出到控制台
+		cores = []zapcore.Core{
+			zapcore.NewCore(fileEncoder, zapcore.AddSync(errorFile), zapcore.ErrorLevel),
+		}
+	} else {
+		// 开发模式：完整日志记录
+		cores = []zapcore.Core{
+			zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level),
+			zapcore.NewCore(fileEncoder, zapcore.AddSync(logFile), level),
+			zapcore.NewCore(fileEncoder, zapcore.AddSync(errorFile), zapcore.ErrorLevel),
+		}
+	}
+	
+	core := zapcore.NewTee(cores...)
 
 	// 创建logger
 	Logger = zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))

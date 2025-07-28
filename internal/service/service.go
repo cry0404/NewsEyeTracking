@@ -21,7 +21,7 @@ type Services struct {
 func NewServices(database *sql.DB, redisClient *database.RedisClient) *Services {
 	queries := db.New(database)
 
-	recommendService := NewRecommendService("") // 使用默认地址
+	recommendService := NewRecommendService() // 使用默认地址
 
 	return &Services{
 		User:        NewUserService(queries),
