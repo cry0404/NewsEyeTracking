@@ -19,9 +19,8 @@ func CORS() gin.HandlerFunc {
 	}
 
 	env := os.Getenv("CURRENT_ENV")
-	// 如果环境变量未设置，默认为开发环境
 	if env == "" {
-		env = "dev"
+		env = "release"
 	}
 
 	switch env {
@@ -30,7 +29,7 @@ func CORS() gin.HandlerFunc {
 			// 开发环境：允许所有来源
 			c.Header("Access-Control-Allow-Origin", "*")
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, User-Agent, X-Screen-Width, X-Screen-Height, X-Viewport-Width, X-Viewport-Height")
 			c.Header("Access-Control-Allow-Credentials", "true")
 
 			// 处理预检请求
@@ -58,11 +57,15 @@ func CORS() gin.HandlerFunc {
 
 			c.Header("Access-Control-Allow-Origin", allowedOrigins)
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, User-Agent, X-Screen-Width, X-Screen-Height, X-Viewport-Width, X-Viewport-Height,x-screen-height, X-Viewport-Width, x-viewport-width, X-Viewport-Height, x-viewport-height")
 			c.Header("Access-Control-Allow-Credentials", "true")
 
 			// 处理预检请求
 			if c.Request.Method == "OPTIONS" {
+
+			c.Header("Access-Control-Allow-Origin", allowedOrigins)
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, User-Agent, X-Screen-Width, X-Screen-Height, X-Viewport-Width, X-Viewport-Height,x-screen-height, X-Viewport-Width, x-viewport-width, X-Viewport-Height, x-viewport-height")
 				c.AbortWithStatus(204)
 				return
 			}
