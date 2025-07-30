@@ -260,13 +260,15 @@ func (h *Handlers) appendToNewsFile(filePath string, newBatchRecord models.UserN
 }
 
 // AddToNewsCache 将新闻数据添加到内存缓存
-func (h *Handlers) AddToNewsCache(userID string, newsGUIDs []string) {
+func (h *Handlers) AddToNewsCache(userID string, newsGUIDs []string, strategy string, recommendUserID string) {
 	h.cacheMutex.Lock()
 	defer h.cacheMutex.Unlock()
 
 	record := models.UserNewsRecord{
 		StartTime: time.Now(),
 		NewsGUIDs: newsGUIDs,
+		Strategy:  strategy,
+		UserID:    recommendUserID,
 	}
 
 	h.newsCache[userID] = append(h.newsCache[userID], record)

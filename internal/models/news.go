@@ -24,7 +24,7 @@ type NewsListItem struct {
 	ID          	int        `json:"id"`
 	GUID        	string     `json:"guid"`
 	Title       	string     `json:"title"`
-	Content			string     `json:"content"`
+	//Content			string     `json:"content"`
 	LikeCount   	int32      `json:"like_count,omitempty"`
 	ShareCount  	int32      `json:"share_count,omitempty"`
 	SaveCount   	int32      `json:"save_count,omitempty"`
@@ -70,8 +70,10 @@ type NewsRequest struct {
 
 // UserNewsRecord 用户新闻浏览记录
 type UserNewsRecord struct {
-	StartTime time.Time `json:"start_time"`
-	NewsGUIDs []string  `json:"news_guids"`
+	StartTime 			time.Time `json:"start_time"`
+	NewsGUIDs 			[]string  `json:"news_guids"`
+	Strategy  			string    `json:"strategy"`     // 推荐算法名称
+	UserID    			string    `json:"user_id"`     // 用户ID
 }
 
 // UserNewsBatchRecord 用户新闻批量记录（用于文件存储）
