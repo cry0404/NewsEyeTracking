@@ -30,6 +30,10 @@ type UserSessionService interface {
 	EndUserSession(ctx context.Context, sessionID uuid.UUID) error
 	// GetActiveUserSessionByUserID 根据用户ID获取活跃会话
 	GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (*db.GetActiveUserSessionByUserIDRow, error)
+	// CleanupExpiredSessions 清理过期会话
+	CleanupExpiredSessions(ctx context.Context) error
+	// GetExpiredUserSessions 获取过期的用户会话
+	GetExpiredUserSessions(ctx context.Context, timeoutSeconds int32) ([]db.GetExpiredUserSessionsRow, error)
 }
 
 // userSessionService 用户会话服务实现
@@ -277,7 +281,6 @@ func (s *userSessionService) EndUserSession(ctx context.Context, sessionID uuid.
 	return nil
 }
 
-/* 暂不需要
 // CleanupExpiredSessions 清理过期会话（定时任务使用）
 func (s *userSessionService) CleanupExpiredSessions(ctx context.Context) error {
 	heartbeatTimeoutSeconds := int32(heartbeatTTL.Seconds())
@@ -288,7 +291,12 @@ func (s *userSessionService) CleanupExpiredSessions(ctx context.Context) error {
 	}
 
 	return nil
-}*/
+}
+
+// GetExpiredUserSessions 获取过期的用户会话
+func (s *userSessionService) GetExpiredUserSessions(ctx context.Context, timeoutSeconds int32) ([]db.GetExpiredUserSessionsRow, error) {
+	return s.queries.GetExpiredUserSessions(ctx, timeoutSeconds)
+}
 
 // GetActiveUserSessionByUserID 根据用户ID获取活跃会话
 func (s *userSessionService) GetActiveUserSessionByUserID(ctx context.Context, userID uuid.UUID) (*db.GetActiveUserSessionByUserIDRow, error) {

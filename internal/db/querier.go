@@ -38,6 +38,8 @@ type Querier interface {
 	// 获取文章的详细信息， 这里需要根据文章的id来获取
 	GetArticleByID(ctx context.Context, id int32) (GetArticleByIDRow, error)
 	GetArticlesByGUID(ctx context.Context, arg GetArticlesByGUIDParams) ([]GetArticlesByGUIDRow, error)
+	// 获取所有过期的活跃用户会话（定时清理使用）
+	GetExpiredUserSessions(ctx context.Context, dollar_1 int32) ([]GetExpiredUserSessionsRow, error)
 	// 获取邀请码ID 和 email（注册时使用）
 	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	GetMoreInfoMation(ctx context.Context, guid string) (GetMoreInfoMationRow, error)

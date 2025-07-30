@@ -23,6 +23,8 @@ type SessionService interface {
 	CreateSessionForFeed(ctx context.Context, userID string, req *models.CreateSessionRequestForArticle) (*models.CreateSessionResponse, error)
 	// EndSession 结束阅读会话
 	EndReadingSession(ctx context.Context, sessionID string, req *models.EndSessionRequest) error
+	// ForceEndSession 强制结束阅读会话（用于清理服务）
+	ForceEndSession(ctx context.Context, sessionID uuid.UUID) error
 	// GetSessionByID 根据ID获取会话信息（用于验证会话状态）
 	GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*db.ReadingSession, error)
 	// GetUserActiveSessions 获取用户所有活跃的阅读会话
@@ -208,6 +210,39 @@ func (s *sessionService) GetSessionByID(ctx context.Context, sessionID uuid.UUID
 		return nil, err
 	}
 	return &session, nil
+}
+
+// ForceEndSession 强制结束阅读会话（用于清理服务）
+func (s *sessionService) ForceEndSession(ctx context.Context, sessionID uuid.UUID) error {
+	// 验证会话是否存在
+	existingSession, err := s.queries.GetSessionByID(ctx, sessionID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("阅读会话不存在")
+		}
+		return fmt.Errorf("查询阅读会话失败: %w", err)
+	}
+
+	// 如果会话已经结束，直接返回
+	if existingSession.EndTime.Valid {
+		log.Printf("阅读会话 %s 已经结束，无需重复处理", sessionID.String())
+		return nil
+	}
+
+	// 强制结束会话，使用当前时间作为结束时间
+	sessionInfo := db.UpdateSessionEndTimeParams{
+		ID:      sessionID,
+		EndTime: sql.NullTime{Time: time.Now(), Valid: true},
+	}
+
+	err = s.queries.UpdateSessionEndTime(ctx, sessionInfo)
+	if err != nil {
+		return fmt.Errorf("强制结束阅读会话失败: %w", err)
+	}
+
+	log.Printf("成功强制结束阅读会话，会话 ID: %s，用户 ID: %s", 
+		sessionID.String(), existingSession.UserID.String())
+	return nil
 }
 
 // GetUserActiveSessions 获取用户所有活跃的阅读会话
