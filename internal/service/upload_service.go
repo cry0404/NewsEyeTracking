@@ -34,7 +34,8 @@ func NewUploadService(queries *db.Queries) UploadService {
 	checkInterval, _ := time.ParseDuration(os.Getenv("UPLOAD_CHECK_INTERVAL"))
 
 	config := utils.Config{
-		WatchDir:      os.Getenv("UPLOAD_WATCH_DIR"),
+		TrackingDir:   os.Getenv("UPLOAD_TRACKING_DIR"),
+		NewsDir:       os.Getenv("UPLOAD_NEWS_DIR"),
 		UploadDir:     os.Getenv("UPLOAD_TEMP_DIR"),
 		MaxFiles:      maxFiles,
 		MaxSize:       maxSize,

@@ -13,19 +13,21 @@ func SetupRoutes(router *gin.Engine, services *service.Services) *handlers.Handl
 	//全局处都需要使用到的中间件就定义到 middleware
 	ginMode := os.Getenv("GIN_MODE")
 	if ginMode == "" {
-		ginMode = gin.DebugMode
+		ginMode = gin.ReleaseMode // 默认使用生产模式
 	}
 	gin.SetMode(ginMode)
-//    loglevel := os.Getenv("LOG_LEVEL")
+	
 	router.Use(middleware.ErrorHandler())
-
 	router.Use(middleware.CORS())
 	
-	// 基础日志中间件
-	router.Use(middleware.Logger())
-
-	//router.Use(middleware.DevLogger())
-	//router.Use(middleware.SessionLog())
+	// 仅在非生产环境启用详细日志
+	if ginMode != gin.ReleaseMode {
+		router.Use(middleware.Logger())
+	}
+	
+	// 开发模式和会话日志已禁用以优化性能
+	// router.Use(middleware.DevLogger())
+	// router.Use(middleware.SessionLog())
 	
 	h := handlers.NewHandlers(services)
 

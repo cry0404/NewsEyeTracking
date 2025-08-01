@@ -24,7 +24,7 @@ type NewsListItem struct {
 	ID          	int        `json:"id"`
 	GUID        	string     `json:"guid"`
 	Title       	string     `json:"title"`
-	Content			string     `json:"content"`
+	//Content			string     `json:"content"`
 	LikeCount   	int32      `json:"like_count,omitempty"`
 	ShareCount  	int32      `json:"share_count,omitempty"`
 	SaveCount   	int32      `json:"save_count,omitempty"`
@@ -40,9 +40,9 @@ type NewsListResponse struct {
 // AdditionalInfo 额外信息（用于A/B测试）
 type AdditionalInfo struct {
 	LikeCount    int32 		`json:"like_count"`
-	Comments     []Comment  `json:"comments"`
 	ShareCount   int32 		`json:"share_count"`
 	SaveCount    int32 		`json:"save_count"`
+	Comments     []Comment  `json:"comments"`
 }
 
 type Comment struct {
@@ -56,10 +56,10 @@ type NewsDetailResponse struct {
 //这里不需要设置 id 了
 	GUID           string          `json:"guid"`
 	Title          string          `json:"title"`
-	Description    *string         `json:"description"`
+	//Description    *string         `json:"description"`
 	Content        string          `json:"content"` // 包含class_id的HTML内容
-	Author         *string         `json:"author"`
-	PublishedAt    *time.Time      `json:"published_at"`
+	//Author         *string         `json:"author"`
+	//PublishedAt    *time.Time      `json:"published_at"`
 	AdditionalInfo *AdditionalInfo `json:"additional_info,omitempty"` // 根据A/B测试决定是否包含
 }
 
@@ -70,8 +70,10 @@ type NewsRequest struct {
 
 // UserNewsRecord 用户新闻浏览记录
 type UserNewsRecord struct {
-	StartTime time.Time `json:"start_time"`
-	NewsGUIDs []string  `json:"news_guids"`
+	StartTime 			time.Time `json:"start_time"`
+	NewsGUIDs 			[]string  `json:"news_guids"`
+	Strategy  			string    `json:"strategy"`     // 推荐算法名称
+	UserID    			string    `json:"user_id"`     // 用户ID
 }
 
 // UserNewsBatchRecord 用户新闻批量记录（用于文件存储）

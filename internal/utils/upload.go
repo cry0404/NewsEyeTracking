@@ -19,7 +19,8 @@ import (
 
 // Config 上传器配置
 type Config struct {
-	WatchDir      string        // 监控目录
+	TrackingDir   string        // 眼动追踪数据目录
+	NewsDir       string        // 新闻数据目录
 	UploadDir     string        // 临时上传目录
 	MaxFiles      int           // 触发上传的最大文件数
 	MaxSize       int64         // 触发上传的最大总大小(字节)
@@ -55,16 +56,19 @@ func (u *FileUploader) Start(ctx context.Context) error {
 	}
 	defer u.watcher.Close()
 
-	// 添加监控目录
-	if err := u.watcher.Add(u.config.WatchDir); err != nil {
-		return fmt.Errorf("添加监控目录失败: %v", err)
+	// 添加监控目录 - tracking 和 news
+	if err := u.watcher.Add(u.config.TrackingDir); err != nil {
+		return fmt.Errorf("添加tracking监控目录失败: %v", err)
+	}
+	if err := u.watcher.Add(u.config.NewsDir); err != nil {
+		return fmt.Errorf("添加news监控目录失败: %v", err)
 	}
 
 	// 启动定时检查
 	ticker := time.NewTicker(u.config.CheckInterval)
 	defer ticker.Stop()
 
-	log.Printf("开始监控目录: %s", u.config.WatchDir)
+	log.Printf("开始监控目录: %s, %s", u.config.TrackingDir, u.config.NewsDir)
 
 	for {
 		select {
@@ -110,27 +114,38 @@ func (u *FileUploader) handleFileEvent(event fsnotify.Event) {
 
 // checkAndUpload 检查并上传文件
 func (u *FileUploader) checkAndUpload() {
-	files, totalSize, err := u.scanWatchDir()
+	// 分别扫描 tracking 和 news 目录
+	u.checkAndUploadDirectory(u.config.TrackingDir, "tracking")
+	u.checkAndUploadDirectory(u.config.NewsDir, "news")
+}
+
+// checkAndUploadDirectory 检查并上传指定目录
+func (u *FileUploader) checkAndUploadDirectory(dir, dirType string) {
+	files, totalSize, err := u.scanDirectory(dir)
 	if err != nil {
-		log.Printf("扫描监控目录失败: %v", err)
+		log.Printf("扫描%s目录失败: %v", dirType, err)
+		return
+	}
+
+	if len(files) == 0 {
 		return
 	}
 
 	// 检查是否达到上传条件
 	if len(files) >= u.config.MaxFiles || totalSize >= u.config.MaxSize {
-		log.Printf("达到上传条件 - 文件数: %d, 总大小: %d bytes", len(files), totalSize)
-		if err := u.uploadFiles(files); err != nil {
-			log.Printf("上传文件失败: %v", err)
+		log.Printf("%s达到上传条件 - 文件数: %d, 总大小: %d bytes", dirType, len(files), totalSize)
+		if err := u.uploadDirectoryFiles(files, dir, dirType); err != nil {
+			log.Printf("上传%s文件失败: %v", dirType, err)
 		}
 	}
 }
 
-// scanWatchDir 扫描监控目录
-func (u *FileUploader) scanWatchDir() ([]string, int64, error) {
+// scanDirectory 扫描指定目录
+func (u *FileUploader) scanDirectory(dir string) ([]string, int64, error) {
 	var files []string
 	var totalSize int64
 
-	err := filepath.Walk(u.config.WatchDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -150,42 +165,43 @@ func (u *FileUploader) scanWatchDir() ([]string, int64, error) {
 	return files, totalSize, err
 }
 
-// uploadFiles 上传文件
-func (u *FileUploader) uploadFiles(files []string) error {
+// uploadDirectoryFiles 上传指定目录的文件
+func (u *FileUploader) uploadDirectoryFiles(files []string, baseDir, dirType string) error {
 	if len(files) == 0 {
 		return nil
 	}
 
 	// 创建压缩文件
 	timestamp := time.Now().Format("20060102_150405")
-	zipFileName := fmt.Sprintf("eyetracking_batch_%s.zip", timestamp)
+	zipFileName := fmt.Sprintf("%s_batch_%s.zip", dirType, timestamp)
 	zipPath := filepath.Join(u.config.UploadDir, zipFileName)
 
-	if err := u.createZipFile(files, zipPath); err != nil {
+	if err := u.createZipFileWithBaseDir(files, zipPath, baseDir); err != nil {
 		return fmt.Errorf("创建压缩文件失败: %v", err)
 	}
 
-	// 上传到OSS
-	if err := u.uploadToOSS(zipPath, zipFileName); err != nil {
+	// 上传到OSS的对应文件夹
+	ossObjectName := fmt.Sprintf("%s/%s", dirType, zipFileName)
+	if err := u.uploadToOSS(zipPath, ossObjectName); err != nil {
 		return fmt.Errorf("上传到OSS失败: %v", err)
 	}
 
-
+	// 清理文件
 	if err := u.cleanupFiles(files); err != nil {
 		log.Printf("清理文件失败: %v", err)
 	}
 
-
+	// 删除临时压缩文件
 	if err := os.Remove(zipPath); err != nil {
 		log.Printf("删除临时压缩文件失败: %v", err)
 	}
 
-	log.Printf("成功上传 %d 个文件", len(files))
+	log.Printf("成功上传 %s 类型 %d 个文件", dirType, len(files))
 	return nil
 }
 
-// createZipFile 创建压缩文件
-func (u *FileUploader) createZipFile(files []string, zipPath string) error {
+// createZipFileWithBaseDir 创建带基础目录的压缩文件
+func (u *FileUploader) createZipFileWithBaseDir(files []string, zipPath, baseDir string) error {
 	zipFile, err := os.Create(zipPath)
 	if err != nil {
 		return err
@@ -196,7 +212,7 @@ func (u *FileUploader) createZipFile(files []string, zipPath string) error {
 	defer zipWriter.Close()
 
 	for _, file := range files {
-		if err := u.addFileToZip(zipWriter, file); err != nil {
+		if err := u.addFileToZipWithBaseDir(zipWriter, file, baseDir); err != nil {
 			return err
 		}
 	}
@@ -204,8 +220,8 @@ func (u *FileUploader) createZipFile(files []string, zipPath string) error {
 	return nil
 }
 
-// addFileToZip 将文件添加到压缩包
-func (u *FileUploader) addFileToZip(zipWriter *zip.Writer, filename string) error {
+// addFileToZipWithBaseDir 将文件添加到压缩包（保持目录结构）
+func (u *FileUploader) addFileToZipWithBaseDir(zipWriter *zip.Writer, filename, baseDir string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -224,14 +240,12 @@ func (u *FileUploader) addFileToZip(zipWriter *zip.Writer, filename string) erro
 		return err
 	}
 
-	// 设置文件名（使用相对路径）
-	relPath, err := filepath.Rel(u.config.WatchDir, filename)
+	// 设置文件名（使用相对路径，保持目录结构）
+	relPath, err := filepath.Rel(baseDir, filename)
 	if err != nil {
 		relPath = filepath.Base(filename)
 	}
 	header.Name = relPath
-
-
 	header.Method = zip.Deflate
 
 	// 创建写入器
@@ -244,6 +258,7 @@ func (u *FileUploader) addFileToZip(zipWriter *zip.Writer, filename string) erro
 	_, err = io.Copy(writer, file)
 	return err
 }
+
 
 // uploadToOSS 上传到阿里云OSS
 func (u *FileUploader) uploadToOSS(filePath, objectName string) error {
@@ -279,18 +294,29 @@ func (u *FileUploader) cleanupFiles(files []string) error {
 
 // GetStats 获取统计信息
 func (u *FileUploader) GetStats() (map[string]interface{}, error) {
-	files, totalSize, err := u.scanWatchDir()
+	// 分别获取tracking和news的统计信息
+	trackingFiles, trackingSize, err := u.scanDirectory(u.config.TrackingDir)
+	if err != nil {
+		return nil, err
+	}
+	
+	newsFiles, newsSize, err := u.scanDirectory(u.config.NewsDir)
 	if err != nil {
 		return nil, err
 	}
 
 	stats := map[string]interface{}{
-		"total_files":    len(files),
-		"total_size":     totalSize,
-		"watch_dir":      u.config.WatchDir,
-		"max_files":      u.config.MaxFiles,
-		"max_size":       u.config.MaxSize,
-		"check_interval": u.config.CheckInterval.String(),
+		"tracking_files":    len(trackingFiles),
+		"tracking_size":     trackingSize,
+		"news_files":        len(newsFiles),
+		"news_size":         newsSize,
+		"total_files":       len(trackingFiles) + len(newsFiles),
+		"total_size":        trackingSize + newsSize,
+		"tracking_dir":      u.config.TrackingDir,
+		"news_dir":          u.config.NewsDir,
+		"max_files":         u.config.MaxFiles,
+		"max_size":          u.config.MaxSize,
+		"check_interval":    u.config.CheckInterval.String(),
 	}
 
 	return stats, nil

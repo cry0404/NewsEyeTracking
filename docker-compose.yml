@@ -1,0 +1,175 @@
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: docker.1ms.run/postgres:15-alpine
+    container_name: newseye_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: easyrss
+      POSTGRES_USER: cry
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d  # 数据库初始化脚本
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cry -d easyrss"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis 缓存
+  redis:
+    image: docker.1ms.run/redis:7-alpine
+    container_name: newseye_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 5s
+
+  # Browserless Chrome (用于 RSSHub)
+  browserless:
+    image: docker.1ms.run/browserless/chrome
+    container_name: newseye_browserless
+    restart: always
+    ulimits:
+      core:
+        hard: 0
+        soft: 0
+    environment:
+      - MAX_CONCURRENT_SESSIONS=10
+      - CONNECTION_TIMEOUT=60000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/pressure"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # RSSHub 服务
+  rsshub:
+    image: docker.1ms.run/diygod/rsshub
+    container_name: newseye_rsshub
+    restart: always
+    ports:
+      - "1200:1200"
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: redis
+      REDIS_URL: "redis://redis:6379/"
+      PUPPETEER_WS_ENDPOINT: "ws://browserless:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1200/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+      browserless:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  # RSS 爬取服务
+  rss-crawler:
+    image: crpi-5ib86f7pgi31tho3.cn-shenzhen.personal.cr.aliyuncs.com/newseyetracking/rss-crawler:latest
+    container_name: newseye_rss_crawler
+    restart: always
+    environment:
+      DB_URL: "postgres://cry:${POSTGRES_PASSWORD:-}@postgres:5432/easyrss?sslmode=disable"
+    volumes:
+      - ./rss-config:/app/configs  # RSS 配置文件挂载点
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rsshub:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  # 主服务 (NewsEyeTracking)
+  main-service:
+    image: crpi-5ib86f7pgi31tho3.cn-shenzhen.personal.cr.aliyuncs.com/newseyetracking/main-service:latest
+    container_name: newseye_main_service
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      DB_URL: "postgres://cry:${POSTGRES_PASSWORD:-}@postgres:5432/easyrss?sslmode=disable"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      CURRENT_ENV: production
+      PORT: 8080
+      GIN_MODE: release
+      LOG_LEVEL: info
+      # 阿里云 OSS 配置
+      ACCESS_ID: ${ACCESS_ID}
+      ACCESS_KEY: ${ACCESS_KEY}
+      OSS_REGION: ${OSS_REGION}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME}
+      # 上传服务配置
+      UPLOAD_TRACKING_DIR: /app/data/tracking
+      UPLOAD_NEWS_DIR: /app/data/news
+      UPLOAD_TEMP_DIR: /app/data/tmp
+      UPLOAD_MAX_FILES: 50
+      UPLOAD_MAX_SIZE: 10485760
+      UPLOAD_CHECK_INTERVAL: 5m
+    volumes:
+      - upload_data:/app/data  # 上传文件存储
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      python-services:
+        condition: service_started
+    env_file:
+      - .env
+
+  # Python 服务 (推荐 + 分词)
+  python-services:
+    image: crpi-5ib86f7pgi31tho3.cn-shenzhen.personal.cr.aliyuncs.com/newseyetracking/python-services:latest
+    container_name: newseye_python_services
+    restart: always
+    ports:
+      - "6667:6667"  # 推荐服务端口
+      - "5000:5000"  # 分词服务端口
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cry
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-}
+      DB_NAME: easyrss
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  upload_data:
+    driver: local
+
+networks:
+  default:
+    name: newseye-network

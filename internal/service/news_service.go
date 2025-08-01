@@ -17,7 +17,7 @@ import (
 // NewsService 新闻列表的设计，主要是获
 type NewsService interface {
 	// GetNews 获取新闻列表
-	GetNews(ctx context.Context, userID string, limit int, addToCache func(userID string, newsGUIDs []string)) (*models.NewsListResponse, error)
+	GetNews(ctx context.Context, userID string, limit int, addToCache func(userID string, newsGUIDs []string, strategy string, recommendUserID string)) (*models.NewsListResponse, error)
 	// GetNewsDetail 获取新闻详情
 	GetNewsDetail(ctx context.Context, newsID string, userID uuid.UUID) (*models.NewsDetailResponse, error)
 	// Stop 停止后台任务并刷新缓存（现在为空实现，保持兼容性）
@@ -38,9 +38,9 @@ func NewNewsService(queries *db.Queries, recommendClient *RecommendService) News
 	}
 }
 
-// GetNews 实现获取新闻列表逻辑, 服务端只需要实现服务逻辑就够了，不需要想着认证之类的东西
-func (s *newsService) GetNews(ctx context.Context, userID string, limit int, addToCache func(userID string, newsGUIDs []string)) (*models.NewsListResponse, error) {
-
+// GetNews 实现获取新闻列表逻辑, 服务端只需要实现服务逻辑就够了，不需要想着认证之类的东西, 应该在 getnes 认证的时候多获得一个字段
+func (s *newsService) GetNews(ctx context.Context, userID string, limit int, addToCache func(userID string, newsGUIDs []string, strategy string, recommendUserID string)) (*models.NewsListResponse, error) {
+	
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("uuid 格式不正确: %w", err)
@@ -53,11 +53,9 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 		return nil, fmt.Errorf("暂时无法获取到内部的测试信息: %w", err)
 	}
 
-
-	// 安全处理HasMoreInformation字段
 	hasMoreInformation := abConfig.HasMoreInformation.Valid && abConfig.HasMoreInformation.Bool
 	//这里判断是否需要增加额外信息, 需要获取每一篇新闻的点赞收藏等信息
-
+//e7b0ecc0-b28b-45a2-8804-28479b680d08
 	 RecommendResponse, err := s.recommendClient.GetRecommendations(ctx, userID)
 	 if err != nil {
 	 	return nil, fmt.Errorf("failed to get articles: %w", err)
@@ -71,7 +69,7 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 		Limit:   int32(limit),
 	 }
 	 articles, err := s.queries.GetArticlesByGUID(ctx, Params)
-
+//这一步位置得到的都是正确的 10 条
 	// 临时解决方案：直接从数据库获取最新文章
 	/*oneDayAgo := time.Now().AddDate(0, 0, -1)
 	articles, err := s.queries.GetNewArticles(ctx, db.GetNewArticlesParams{
@@ -89,7 +87,7 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 			newsItem := models.NewsListItem{
 				ID:          int(article.ID),
 				GUID:        article.Guid,
-				Content:     article.Content.String,
+				//Content:     article.Content.String,
 				Title:       article.Title,
 				LikeCount:   article.LikeCount.Int32,
 				ShareCount:  article.ShareCount.Int32,
@@ -107,7 +105,7 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 			newsItem := models.NewsListItem{
 				ID:          int(article.ID),
 				GUID:        article.Guid,
-				Content:     article.Content.String,
+				//Content:     article.Content.String,
 				Title:       article.Title,
 			}
 			
@@ -120,11 +118,8 @@ func (s *newsService) GetNews(ctx context.Context, userID string, limit int, add
 
 
 	if addToCache != nil {
-		addToCache(userID, newsGUIDs)
+		addToCache(userID, newsGUIDs, RecommendResponse.Strategy, RecommendResponse.UserID)
 	}
-
-	// 根据A/B测试配置决定点赞收藏评论
-	_ = abConfig // 暂时标记使用
 
 	return &models.NewsListResponse{
 		Articles: newsItems,
@@ -159,27 +154,17 @@ func (s *newsService) GetNewsDetail(ctx context.Context, newsID string, userID u
 	newsItem := models.NewsDetailResponse{
 		GUID:        article.Guid,
 		Title:       article.Title,
-		Description: nil, 
+		//Description: nil, 
 		Content:     "",  
-		Author:      nil, 
-		PublishedAt: nil, 
+		//Author:      nil, 
+		//PublishedAt: nil, 
 		
 	}//这里的 id 默认字段为 0
 	// 安全地处理可能为空的字段
-	if article.Description.Valid {
-		newsItem.Description = &article.Description.String
-	}
+	
 
 	if article.Content.Valid {
 		newsItem.Content = article.Content.String 
-	}
-
-	if article.Author.Valid {
-		newsItem.Author = &article.Author.String
-	}
-
-	if article.PublishedAt.Valid {
-		newsItem.PublishedAt = &article.PublishedAt.Time
 	}
 	if hasMoreInformation {
 		additionalInformation, err := s.queries.GetMoreInfoMation(ctx, article.Guid)

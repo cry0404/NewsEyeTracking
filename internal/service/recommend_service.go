@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -18,9 +19,10 @@ type RecommendService struct {
 }
 
 // NewRecommendService 创建推荐服务客户端
-func NewRecommendService(baseURL string) *RecommendService {
+func NewRecommendService() *RecommendService {
+	baseURL := os.Getenv("RECOMMEND_URL")
 	if baseURL == "" {
-		baseURL = "http://127.0.0.1:6667" // Python Flask服务端口
+		 baseURL="172.18.0.1:6667"// Python Flask服务端口
 	}
 
 	return &RecommendService{

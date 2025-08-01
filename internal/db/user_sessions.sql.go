@@ -110,6 +110,56 @@ func (q *Queries) GetActiveUserSessionByUserID(ctx context.Context, userID uuid.
 	return i, err
 }
 
+const getExpiredUserSessions = `-- name: GetExpiredUserSessions :many
+SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
+FROM user_sessions 
+WHERE 
+    is_active = TRUE 
+    AND EXTRACT(EPOCH FROM (NOW() - last_heartbeat)) > $1::integer
+`
+
+type GetExpiredUserSessionsRow struct {
+	ID            uuid.UUID    `json:"id"`
+	UserID        uuid.UUID    `json:"user_id"`
+	StartTime     sql.NullTime `json:"start_time"`
+	LastHeartbeat sql.NullTime `json:"last_heartbeat"`
+	IsActive      sql.NullBool `json:"is_active"`
+	EndTime       sql.NullTime `json:"end_time"`
+	CreatedDate   sql.NullTime `json:"created_date"`
+}
+
+// 获取所有过期的活跃用户会话（定时清理使用）
+func (q *Queries) GetExpiredUserSessions(ctx context.Context, dollar_1 int32) ([]GetExpiredUserSessionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getExpiredUserSessions, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExpiredUserSessionsRow
+	for rows.Next() {
+		var i GetExpiredUserSessionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.StartTime,
+			&i.LastHeartbeat,
+			&i.IsActive,
+			&i.EndTime,
+			&i.CreatedDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserSessionByID = `-- name: GetUserSessionByID :one
 SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
 FROM user_sessions 

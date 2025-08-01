@@ -60,4 +60,12 @@ FROM user_sessions
 WHERE user_id = $1 
 ORDER BY start_time DESC;
 
+-- 获取所有过期的活跃用户会话（定时清理使用）
+-- name: GetExpiredUserSessions :many
+SELECT id, user_id, start_time, last_heartbeat, is_active, end_time, created_date
+FROM user_sessions 
+WHERE 
+    is_active = TRUE 
+    AND EXTRACT(EPOCH FROM (NOW() - last_heartbeat)) > $1::integer;
+
 
