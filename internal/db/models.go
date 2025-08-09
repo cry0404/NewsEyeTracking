@@ -44,6 +44,7 @@ type FeedItem struct {
 	SaveCount    sql.NullInt32         `json:"save_count"`
 	Comments     pqtype.NullRawMessage `json:"comments"`
 	CommentCount sql.NullInt32         `json:"comment_count"`
+	ContentHash  sql.NullString        `json:"content_hash"`
 }
 
 type InviteCode struct {

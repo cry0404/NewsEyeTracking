@@ -31,9 +31,10 @@ type CreateUserSessionResponse struct {
 }
 
 type LoginResponse struct {
-	SessionID uuid.UUID `json:"session_id"`
-	StartTime time.Time `json:"start_time"`
-	Token     string    `json:"token"`
+	SessionID 		uuid.UUID `json:"session_id"`
+	StartTime 		time.Time `json:"start_time"`
+	Token     		string    `json:"token"`
+	MoreInformation bool	  `json:"more_information"`
 }
 
 // HeartbeatRequest 心跳请求

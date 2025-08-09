@@ -1,9 +1,5 @@
--- PostgreSQL数据库初始化脚本
--- 整合了所有迁移文件，用于生产环境部署
--- 创建时间: 2025-01-24
--- 版本: v1.0
 
--- 启用必要的扩展
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
@@ -41,7 +37,8 @@ CREATE TABLE feed_items (
     share_count INT DEFAULT 0,
     save_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
-    comments JSONB -- 存储嵌套的评论结构
+    comments JSONB, -- 存储嵌套的评论结构
+    content_hash VARCHAR(64) -- 内容哈希，用于去重
 );
 
 -- 为分词处理添加注释
@@ -135,6 +132,7 @@ CREATE INDEX idx_feeds_is_active ON feeds(is_active);
 CREATE INDEX idx_feed_items_feed_id ON feed_items(feed_id);
 CREATE INDEX idx_feed_items_published_at ON feed_items(published_at);
 CREATE INDEX idx_feed_items_guid ON feed_items(guid);
+CREATE INDEX idx_feed_items_content_hash ON feed_items(content_hash);
 
 -- invite_codes表索引
 CREATE INDEX idx_invite_codes_code ON invite_codes(code);
@@ -222,9 +220,7 @@ CREATE TRIGGER trigger_update_comment_count
     FOR EACH ROW
     EXECUTE FUNCTION update_comment_count_trigger();
 
--- ============================================================================
--- 数据库初始化完成
--- ============================================================================
+
 
 -- 输出完成信息
 SELECT 'NewsEyeTracking数据库初始化完成！' AS status;

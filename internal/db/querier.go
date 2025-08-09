@@ -40,6 +40,8 @@ type Querier interface {
 	GetArticlesByGUID(ctx context.Context, arg GetArticlesByGUIDParams) ([]GetArticlesByGUIDRow, error)
 	// 获取所有过期的活跃用户会话（定时清理使用）
 	GetExpiredUserSessions(ctx context.Context, dollar_1 int32) ([]GetExpiredUserSessionsRow, error)
+	// 根据内容哈希查找是否存在重复文章
+	GetFeedItemByContentHash(ctx context.Context, contentHash sql.NullString) (GetFeedItemByContentHashRow, error)
 	// 获取邀请码ID 和 email（注册时使用）
 	GetIdAndEmailByCodeID(ctx context.Context, id uuid.UUID) (GetIdAndEmailByCodeIDRow, error)
 	GetMoreInfoMation(ctx context.Context, guid string) (GetMoreInfoMationRow, error)
@@ -67,6 +69,8 @@ type Querier interface {
 	// 只是需要记录结束时间就可以了，不需要返回
 	UpdateSessionEndTime(ctx context.Context, arg UpdateSessionEndTimeParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// 插入或更新文章（现在包含content_hash字段）
+	UpsertFeedItem(ctx context.Context, arg UpsertFeedItemParams) (FeedItem, error)
 }
 
 var _ Querier = (*Queries)(nil)
