@@ -1,4 +1,5 @@
 package utils
+
 //作为工具函数来使用， 这里主要考虑如何上传，是否需要上传到 oss 或者自建的图床？
 import (
 	"archive/zip"
@@ -259,10 +260,9 @@ func (u *FileUploader) addFileToZipWithBaseDir(zipWriter *zip.Writer, filename, 
 	return err
 }
 
-
 // uploadToOSS 上传到阿里云OSS
 func (u *FileUploader) uploadToOSS(filePath, objectName string) error {
-bucketName := os.Getenv("OSS_BUCKET_NAME")
+	bucketName := os.Getenv("OSS_BUCKET_NAME")
 
 	putRequest := &oss.PutObjectRequest{
 		Bucket: oss.Ptr(bucketName),
@@ -292,6 +292,42 @@ func (u *FileUploader) cleanupFiles(files []string) error {
 	return nil
 }
 
+// ForceUploadAll 强制上传所有文件，不检查阈值条件
+func (u *FileUploader) ForceUploadAll() error {
+	log.Println("开始强制上传所有文件...")
+
+	// 强制上传 tracking 目录
+	if err := u.forceUploadDirectory(u.config.TrackingDir, "tracking"); err != nil {
+		log.Printf("强制上传tracking目录失败: %v", err)
+		return err
+	}
+
+	// 强制上传 news 目录
+	if err := u.forceUploadDirectory(u.config.NewsDir, "news"); err != nil {
+		log.Printf("强制上传news目录失败: %v", err)
+		return err
+	}
+
+	log.Println("强制上传完成")
+	return nil
+}
+
+// forceUploadDirectory 强制上传指定目录的所有文件
+func (u *FileUploader) forceUploadDirectory(dir, dirType string) error {
+	files, _, err := u.scanDirectory(dir)
+	if err != nil {
+		return fmt.Errorf("扫描%s目录失败: %v", dirType, err)
+	}
+
+	if len(files) == 0 {
+		log.Printf("%s目录没有文件需要上传", dirType)
+		return nil
+	}
+
+	log.Printf("强制上传%s目录 - 文件数: %d", dirType, len(files))
+	return u.uploadDirectoryFiles(files, dir, dirType)
+}
+
 // GetStats 获取统计信息
 func (u *FileUploader) GetStats() (map[string]interface{}, error) {
 	// 分别获取tracking和news的统计信息
@@ -299,24 +335,24 @@ func (u *FileUploader) GetStats() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	newsFiles, newsSize, err := u.scanDirectory(u.config.NewsDir)
 	if err != nil {
 		return nil, err
 	}
 
 	stats := map[string]interface{}{
-		"tracking_files":    len(trackingFiles),
-		"tracking_size":     trackingSize,
-		"news_files":        len(newsFiles),
-		"news_size":         newsSize,
-		"total_files":       len(trackingFiles) + len(newsFiles),
-		"total_size":        trackingSize + newsSize,
-		"tracking_dir":      u.config.TrackingDir,
-		"news_dir":          u.config.NewsDir,
-		"max_files":         u.config.MaxFiles,
-		"max_size":          u.config.MaxSize,
-		"check_interval":    u.config.CheckInterval.String(),
+		"tracking_files": len(trackingFiles),
+		"tracking_size":  trackingSize,
+		"news_files":     len(newsFiles),
+		"news_size":      newsSize,
+		"total_files":    len(trackingFiles) + len(newsFiles),
+		"total_size":     trackingSize + newsSize,
+		"tracking_dir":   u.config.TrackingDir,
+		"news_dir":       u.config.NewsDir,
+		"max_files":      u.config.MaxFiles,
+		"max_size":       u.config.MaxSize,
+		"check_interval": u.config.CheckInterval.String(),
 	}
 
 	return stats, nil
