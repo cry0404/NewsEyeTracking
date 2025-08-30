@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-// RecommendService 推荐服务客户端
+
 type RecommendService struct {
 	client  *http.Client
 	baseURL string
 }
 
-// NewRecommendService 创建推荐服务客户端
+
 func NewRecommendService() *RecommendService {
 	baseURL := os.Getenv("RECOMMEND_URL")
 	if baseURL == "" {
-		 baseURL="172.18.0.1:6667"// Python Flask服务端口
+		 baseURL="172.18.0.1:6667"
 	}
 
 	return &RecommendService{

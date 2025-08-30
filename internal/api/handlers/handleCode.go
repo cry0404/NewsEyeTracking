@@ -96,11 +96,25 @@ func (h *Handlers) ValidCode(c *gin.Context) {
 		))
 		return
 	}
+	
+
+	abConfig, err := h.services.User.GetUserABTestConfig(ctx, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse(
+			models.ErrorCodeInternalError,
+			"获取有关推荐设置失败",
+			err.Error(),
+		))
+		return
+	}
+
+	hasMoreInformation := abConfig.HasMoreInformation
 	// token 中自带 user id，不用返回 user id
 	c.JSON(http.StatusOK, models.SuccessResponse(models.LoginResponse{
 		SessionID: newUserSession.SessionID,
 		StartTime: newUserSession.StartTime,
 		Token: token,
+		MoreInformation: hasMoreInformation,
 	}))
 	
 }

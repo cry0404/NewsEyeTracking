@@ -34,6 +34,8 @@ type UserSessionService interface {
 	CleanupExpiredSessions(ctx context.Context) error
 	// GetExpiredUserSessions 获取过期的用户会话
 	GetExpiredUserSessions(ctx context.Context, timeoutSeconds int32) ([]db.GetExpiredUserSessionsRow, error)
+	// GetActiveOnlineCount 获取当前活跃在线用户数量（基于 Redis 会话键）
+	GetActiveOnlineCount(ctx context.Context) (int, error)
 }
 
 // userSessionService 用户会话服务实现
@@ -305,4 +307,15 @@ func (s *userSessionService) GetActiveUserSessionByUserID(ctx context.Context, u
 		return nil, err
 	}
 	return &row, nil
+}
+
+// GetActiveOnlineCount 获取当前活跃在线用户数量
+// 实现方式：统计 Redis 中键 user_session:* 的数量（依赖 TTL 自动过期）
+// 注意：对于大型实例建议改用 SCAN 以避免 KEYS 阻塞
+func (s *userSessionService) GetActiveOnlineCount(ctx context.Context) (int, error) {
+	keys, err := s.redisClient.Keys(ctx, userSessionKeyPrefix+"*")
+	if err != nil {
+		return 0, err
+	}
+	return len(keys), nil
 }

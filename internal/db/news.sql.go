@@ -137,6 +137,35 @@ func (q *Queries) GetArticlesByGUID(ctx context.Context, arg GetArticlesByGUIDPa
 	return items, nil
 }
 
+const getFeedItemByContentHash = `-- name: GetFeedItemByContentHash :one
+SELECT id, guid, title, link, created_at
+FROM feed_items
+WHERE content_hash = $1
+LIMIT 1
+`
+
+type GetFeedItemByContentHashRow struct {
+	ID        int32        `json:"id"`
+	Guid      string       `json:"guid"`
+	Title     string       `json:"title"`
+	Link      string       `json:"link"`
+	CreatedAt sql.NullTime `json:"created_at"`
+}
+
+// 根据内容哈希查找是否存在重复文章
+func (q *Queries) GetFeedItemByContentHash(ctx context.Context, contentHash sql.NullString) (GetFeedItemByContentHashRow, error) {
+	row := q.db.QueryRowContext(ctx, getFeedItemByContentHash, contentHash)
+	var i GetFeedItemByContentHashRow
+	err := row.Scan(
+		&i.ID,
+		&i.Guid,
+		&i.Title,
+		&i.Link,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getMoreInfoMation = `-- name: GetMoreInfoMation :one
 SELECT like_count, share_count, save_count, comments
 FROM feed_items
@@ -163,7 +192,7 @@ func (q *Queries) GetMoreInfoMation(ctx context.Context, guid string) (GetMoreIn
 }
 
 const getNewArticles = `-- name: GetNewArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count, content_hash FROM feed_items
 WHERE published_at > $1  -- 这里每天根据推荐时间选取
 ORDER BY published_at DESC
 LIMIT $2
@@ -201,6 +230,7 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 			&i.SaveCount,
 			&i.Comments,
 			&i.CommentCount,
+			&i.ContentHash,
 		); err != nil {
 			return nil, err
 		}
@@ -216,7 +246,7 @@ func (q *Queries) GetNewArticles(ctx context.Context, arg GetNewArticlesParams) 
 }
 
 const getRandomArticles = `-- name: GetRandomArticles :many
-SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count FROM feed_items
+SELECT id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count, content_hash FROM feed_items
 WHERE published_at > $1  -- 最近一段时间的新闻
 ORDER BY RANDOM()
 LIMIT $2
@@ -254,6 +284,7 @@ func (q *Queries) GetRandomArticles(ctx context.Context, arg GetRandomArticlesPa
 			&i.SaveCount,
 			&i.Comments,
 			&i.CommentCount,
+			&i.ContentHash,
 		); err != nil {
 			return nil, err
 		}
@@ -266,4 +297,82 @@ func (q *Queries) GetRandomArticles(ctx context.Context, arg GetRandomArticlesPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertFeedItem = `-- name: UpsertFeedItem :one
+INSERT INTO feed_items (
+    feed_id, title, description, content, link, guid, author, 
+    published_at, like_count, share_count, save_count, comments, content_hash
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+)
+ON CONFLICT (guid) DO UPDATE SET
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    content = EXCLUDED.content,
+    link = EXCLUDED.link,
+    author = EXCLUDED.author,
+    published_at = EXCLUDED.published_at,
+    like_count = EXCLUDED.like_count,
+    share_count = EXCLUDED.share_count,
+    save_count = EXCLUDED.save_count,
+    comments = EXCLUDED.comments,
+    content_hash = EXCLUDED.content_hash
+RETURNING id, feed_id, title, description, content, link, guid, author, keywords, published_at, created_at, like_count, share_count, save_count, comments, comment_count, content_hash
+`
+
+type UpsertFeedItemParams struct {
+	FeedID      sql.NullInt32         `json:"feed_id"`
+	Title       string                `json:"title"`
+	Description sql.NullString        `json:"description"`
+	Content     sql.NullString        `json:"content"`
+	Link        string                `json:"link"`
+	Guid        string                `json:"guid"`
+	Author      sql.NullString        `json:"author"`
+	PublishedAt sql.NullTime          `json:"published_at"`
+	LikeCount   sql.NullInt32         `json:"like_count"`
+	ShareCount  sql.NullInt32         `json:"share_count"`
+	SaveCount   sql.NullInt32         `json:"save_count"`
+	Comments    pqtype.NullRawMessage `json:"comments"`
+	ContentHash sql.NullString        `json:"content_hash"`
+}
+
+// 插入或更新文章（现在包含content_hash字段）
+func (q *Queries) UpsertFeedItem(ctx context.Context, arg UpsertFeedItemParams) (FeedItem, error) {
+	row := q.db.QueryRowContext(ctx, upsertFeedItem,
+		arg.FeedID,
+		arg.Title,
+		arg.Description,
+		arg.Content,
+		arg.Link,
+		arg.Guid,
+		arg.Author,
+		arg.PublishedAt,
+		arg.LikeCount,
+		arg.ShareCount,
+		arg.SaveCount,
+		arg.Comments,
+		arg.ContentHash,
+	)
+	var i FeedItem
+	err := row.Scan(
+		&i.ID,
+		&i.FeedID,
+		&i.Title,
+		&i.Description,
+		&i.Content,
+		&i.Link,
+		&i.Guid,
+		&i.Author,
+		pq.Array(&i.Keywords),
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.LikeCount,
+		&i.ShareCount,
+		&i.SaveCount,
+		&i.Comments,
+		&i.CommentCount,
+		&i.ContentHash,
+	)
+	return i, err
 }

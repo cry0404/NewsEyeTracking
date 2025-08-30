@@ -16,7 +16,7 @@ type ErrorInfo struct {
 
 // 常用错误代码
 const (
-	ErrorBadRequest			   = "WRONG REQUEST"
+	ErrorBadRequest            = "WRONG REQUEST"
 	ErrorCodeInvalidRequest    = "INVALID_REQUEST"
 	ErrorCodeUnauthorized      = "UNAUTHORIZED"
 	ErrorCodeForbidden         = "FORBIDDEN"
@@ -29,6 +29,7 @@ const (
 	ErrorCodeDataProcessError  = "DATA_PROCESS_ERROR"
 	ErrorCodeOSSUploadError    = "OSS_UPLOAD_ERROR"
 	ErrorCodeDatabaseError     = "DATABASE_ERROR"
+	ErrorCodeTooManyRequests   = "TOO_MANY_REQUESTS"
 )
 
 // SuccessResponse 创建成功响应
@@ -38,6 +39,7 @@ func SuccessResponse(data interface{}) *APIResponse {
 		Data:   data,
 	}
 }
+
 // api response 在这里可以理解为父亲，error 和 success 都是继承的内容了
 // ErrorResponse 创建错误响应，设计的函数，使用 errorinfo 来获取
 func ErrorResponse(code, message, details string) *APIResponse {
@@ -50,4 +52,3 @@ func ErrorResponse(code, message, details string) *APIResponse {
 		},
 	}
 }
-

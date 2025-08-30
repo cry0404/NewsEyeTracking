@@ -143,9 +143,11 @@ class ItemBasedCFWithEye:
         data = self.redis_conn.get(key)
         return pickle.loads(data) if data else set()
 
-    def _filter_recent_news(self, news_list, days=2):
+    def _filter_recent_news(self, news_list, days=2, fallback_days=7):
+        """过滤最近的新闻，如果结果不足会自动扩展时间范围"""
         cutoff_time = datetime.now() - timedelta(days=days)
         filtered_news = []
+        
         for item in news_list:
             if isinstance(item, tuple):
                 news_id, score = item
@@ -161,6 +163,12 @@ class ItemBasedCFWithEye:
                     filtered_news.append((news_id, score))
             else:
                 filtered_news.append((news_id, score))
+        
+        # 如果结果太少，扩展时间范围
+        if len(filtered_news) < 5 and fallback_days > days:
+            print(f"[INFO] 最近{days}天文章不足({len(filtered_news)}篇)，扩展到{fallback_days}天")
+            return self._filter_recent_news(news_list, fallback_days, fallback_days * 2)
+        
         return filtered_news
 
     def _get_recent_user_history(self, user, all_watched_news, recent_days):
@@ -206,36 +214,54 @@ class ItemBasedCFWithEye:
     def _generate_recommendation_pool(self, user, pool_size=100):
         recommended_history = self._get_recommended_history(user)
         all_watched_news = self.trainSet.get(user, {})
-
-        pool = self._get_personalized_recommendations(
-            user, recommended_history, all_watched_news, recent_days=7, n=pool_size
-        )
-        exist_ids = set(news_id for news_id, _ in pool) | set(all_watched_news) | set(recommended_history)
         method = 'itemcf'
+        pool = []
+        
+        # 1. 尝试个性化推荐（基于用户历史）
+        if all_watched_news:  # 用户有历史记录
+            pool = self._get_personalized_recommendations(
+                user, recommended_history, all_watched_news, recent_days=7, n=pool_size
+            )
+            print(f"[INFO] 用户{user}个性化推荐获得{len(pool)}篇文章")
+        
+        exist_ids = set(news_id for news_id, _ in pool) | set(all_watched_news) | set(recommended_history)
+        
+        # 2. 补充热门推荐
         if len(pool) < pool_size:
+            need_count = pool_size - len(pool)
             hot_recs = self._get_hot_recommendations(
-                user, recommended_history, all_watched_news, n=pool_size - len(pool), exclude_ids=exist_ids
+                user, recommended_history, all_watched_news, n=need_count, exclude_ids=exist_ids
             )
             pool.extend(hot_recs)
             exist_ids |= set(news_id for news_id, _ in hot_recs)
-            method = 'random'
+            print(f"[INFO] 用户{user}热门推荐补充{len(hot_recs)}篇文章")
+            if not all_watched_news:  # 新用户主要依靠热门推荐
+                method = 'hot'
 
+        # 3. 补充最新文章推荐
         if len(pool) < pool_size:
-            random_recs = self._get_random_recommendations(
-                user, recommended_history, all_watched_news, n=pool_size - len(pool), exclude_ids=exist_ids
-            )
-            pool.extend(random_recs)
-            exist_ids |= set(news_id for news_id, _ in random_recs)
-            method = 'random'
-
-        if len(pool) < pool_size:
+            need_count = pool_size - len(pool)
             latest_recs = self._get_latest_recommendations(
-                user, recommended_history, all_watched_news, n=pool_size - len(pool), exclude_ids=exist_ids
+                user, recommended_history, all_watched_news, n=need_count, exclude_ids=exist_ids
             )
             pool.extend(latest_recs)
-            method = 'random'
+            exist_ids |= set(news_id for news_id, _ in latest_recs)
+            print(f"[INFO] 用户{user}最新文章补充{len(latest_recs)}篇文章")
 
-        return pool[:pool_size], method
+        # 4. 最后的随机推荐兜底
+        if len(pool) < pool_size:
+            need_count = pool_size - len(pool)
+            random_recs = self._get_random_recommendations(
+                user, recommended_history, all_watched_news, n=need_count, exclude_ids=exist_ids
+            )
+            pool.extend(random_recs)
+            print(f"[INFO] 用户{user}随机推荐兜底{len(random_recs)}篇文章")
+            if len(pool) < pool_size // 2:  # 如果大部分都是随机推荐
+                method = 'random'
+
+        final_pool = pool[:pool_size]
+        print(f"[INFO] 用户{user}最终推荐池大小: {len(final_pool)}, 方法: {method}")
+        return final_pool, method
 
     def _get_personalized_recommendations(self, user, recommended_history, all_watched_news, recent_days, n=100,
                                           exclude_ids=None):
@@ -259,7 +285,15 @@ class ItemBasedCFWithEye:
         for news_id, popularity in sorted(self.news_popular.items(), key=lambda x: x[1], reverse=True):
             if news_id not in all_watched_news and news_id not in recommended_history and news_id not in exclude_ids:
                 hot_candidates.append((news_id, popularity))
-        filtered_hot = self._filter_recent_news(hot_candidates, days=3)
+        
+        # 先尝试7天内的热门文章
+        filtered_hot = self._filter_recent_news(hot_candidates, days=7, fallback_days=14)
+        
+        # 如果仍然不够，不进行时间过滤，直接返回最热门的
+        if len(filtered_hot) < n and len(hot_candidates) > len(filtered_hot):
+            print(f"[INFO] 热门文章时间过滤后不足，使用全部热门文章")
+            return hot_candidates[:n]
+        
         return filtered_hot[:n]
 
     def _get_random_recommendations(self, user, recommended_history, all_watched_news, n=100, exclude_ids=None):
@@ -268,17 +302,35 @@ class ItemBasedCFWithEye:
         for news_id in self.news_keywords.keys():
             if news_id not in all_watched_news and news_id not in recommended_history and news_id not in exclude_ids:
                 all_candidates.append((news_id, 0))
-        filtered_candidates = self._filter_recent_news(all_candidates, days=3)
+        
+        # 先尝试14天内的文章
+        filtered_candidates = self._filter_recent_news(all_candidates, days=14, fallback_days=30)
+        
+        # 如果仍然不够，使用所有可用文章
+        if len(filtered_candidates) < n and len(all_candidates) > len(filtered_candidates):
+            print(f"[INFO] 随机推荐时间过滤后不足，使用所有可用文章")
+            random.shuffle(all_candidates)
+            return all_candidates[:n]
+        
         random.shuffle(filtered_candidates)
         return filtered_candidates[:n]
 
     def _get_latest_recommendations(self, user, recommended_history, all_watched_news, n=100, exclude_ids=None):
         exclude_ids = exclude_ids or set()
         latest_candidates = []
+        
+        # 收集所有符合条件的文章
         for news_id, timestamp in self.news_timestamps.items():
             if news_id not in all_watched_news and news_id not in recommended_history and news_id not in exclude_ids:
-                if timestamp:
-                    latest_candidates.append((news_id, timestamp))
+                if self._is_placeholder_article(news_id):
+                    continue
+                # 使用当前时间作为默认时间戳，确保没有时间戳的文章也能被推荐
+                actual_timestamp = timestamp if timestamp else datetime.now()
+                latest_candidates.append((news_id, actual_timestamp))
+        
+        # 按时间排序，最新的在前
         latest_candidates.sort(key=lambda x: x[1], reverse=True)
         latest_recs = [(news_id, 0) for news_id, _ in latest_candidates]
+        
+        print(f"[INFO] 最新文章推荐候选: {len(latest_recs)}篇")
         return latest_recs[:n]
