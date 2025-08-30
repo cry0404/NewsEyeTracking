@@ -116,7 +116,7 @@ func main() {
 	<-quit
 	log.Println("正在关闭服务器...")
 
-	// 优雅关闭服务器，等待当前请求完成
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
